@@ -178,7 +178,16 @@ $(document).ready(function () {
         });
     }
 
-    $(document).on('click', '.btn-favorite', function () {
+    // ========== 5. КАРТОЧКИ — навигация по клику (игнорируем кнопки) ==========
+    $(document).on('click', '.property-card', function (e) {
+        // Не переходим если кликнули на кнопку или ссылку
+        if ($(e.target).closest('button, a').length) return;
+        var id = $(this).data('prop-id') || $(this).closest('[data-id]').data('id');
+        if (id) window.location = 'property.php?id=' + id;
+    });
+
+    // ========== 6. ИЗБРАННОЕ ==========
+    $(document).on('click', '.btn-favorite', function (e) {
         var $btn = $(this);
         var itemData = $btn.data('item');
         var item = null;
@@ -186,17 +195,15 @@ $(document).ready(function () {
         if (itemData) {
             try {
                 item = typeof itemData === 'string' ? JSON.parse(itemData) : itemData;
-            } catch (e) { }
+            } catch (ex) { }
         }
 
         if (!item) {
-            // Пытаемся получить данные из карточки
-            var $card = $btn.closest('.property-item, .col-12');
+            var $card = $btn.closest('[data-id]');
             item = {
-                id: $card.data('id'),
+                id: parseInt($card.data('id')),
                 name: $card.find('.card-title').text(),
                 base_price: $card.data('price'),
-                location: $card.find('.text-muted i.bi-geo-alt').closest('p').text().trim(),
                 type: $card.data('type'),
                 image_url: $card.find('img').attr('src')
             };
@@ -205,7 +212,7 @@ $(document).ready(function () {
         if (!item || !item.id) return;
 
         var favs = getFavorites();
-        var existingIndex = favs.findIndex(function (f) { return f.id == item.id; });
+        var existingIndex = favs.findIndex(function (f) { return String(f.id) === String(item.id); });
 
         if (existingIndex >= 0) {
             favs.splice(existingIndex, 1);
@@ -213,7 +220,7 @@ $(document).ready(function () {
             $btn.attr('title', 'Добавить в избранное');
         } else {
             favs.push(item);
-            $btn.find('i').addClass('bi-heart-fill text-danger').removeClass('bi-heart');
+            $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
             $btn.attr('title', 'В избранном');
         }
         saveFavorites(favs);
@@ -326,14 +333,16 @@ $(document).ready(function () {
             var name = escapeHtml(item.name || 'Без названия');
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
-            var imgUrl = item.image_url || './img/property/room_example.png';
+            var imgUrl = item.image_url || '../img/property/metro-plus.png';
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
+            var reviewCount = item.review_count || 0;
+            var ratingDisplay = item.avg_rating > 0 ? parseFloat(item.avg_rating).toFixed(1) : '4.5';
             var itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             var cardHtml = `
                 <div class="col-12 mb-4 property-item" data-id="${item.id}" data-type="${item.type}" data-price="${item.base_price}">
-                    <div class="property-card card border-0 shadow-sm">
+                    <div class="property-card card border-0 shadow-sm" style="cursor:pointer;" onclick="window.location='property.php?id=\$\{item.id\}'">
                         <div class="row g-0">
                             <div class="col-md-4 position-relative">
                                 <img src="${imgUrl}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" alt="${name}" style="min-height: 200px;">
@@ -349,8 +358,8 @@ $(document).ready(function () {
                                             <p class="card-text text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${address}</p>
                                         </div>
                                         <div class="text-end">
-                                            <div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>4.5</div>
-                                            <small class="text-muted">(0 отзывов)</small>
+                                            <div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${ratingDisplay}</div>
+                                            <small class="text-muted">${reviewCount > 0 ? reviewCount + " отзывов" : "Новинка"}</small>
                                         </div>
                                     </div>
                                     <hr>
@@ -384,3 +393,5 @@ $(document).ready(function () {
         loadAllProperties();
     }
 });
+
+

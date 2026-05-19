@@ -13,7 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/style.css">
 </head>
 
 <body>
@@ -121,19 +121,22 @@ if (session_status() === PHP_SESSION_NONE) {
                             'Адрес не указан').html();
                         var description = $('<div>').text(item.description ||
                             'Описание отсутствует').html();
+                        var imgUrl = item.image_url || '../img/property/metro-plus.png';
+                        var reviewCount = item.review_count || 0;
+                        var ratingVal = item.avg_rating > 0 ? parseFloat(item.avg_rating).toFixed(1) : '4.8';
                         var cardHtml = `
                             <div class="col-12 mb-4 property-item" data-type="${item.type}" data-price="${item.base_price}">
-                                <div class="property-card card border-0 shadow-sm">
+                                <div class="property-card card border-0 shadow-sm" style="cursor:pointer;" data-prop-id="${item.id}">
                                     <div class="row g-0">
                                         <div class="col-md-4 position-relative">
-                                            <img src="./img/property/room_example.png" class="img-fluid rounded-start" alt="${name.replace(/"/g, '&quot;')}">
+                                            <img src="${imgUrl}" class="img-fluid rounded-start" alt="${name.replace(/"/g, '&quot;')}" onerror="this.src='../img/property/metro-plus.png'">
                                             <button class="btn btn-favorite position-absolute top-0 end-0 m-3 border-0"><i class="bi bi-heart"></i></button>
                                         </div>
                                         <div class="col-md-8">
                                             <div class="card-body p-4">
                                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                                     <div><h5 class="card-title mb-1 fw-bold">${name}</h5><p class="card-text text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${address}</p></div>
-                                                    <div class="text-end"><div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>4.5</div><small class="text-muted">(0 отзывов)</small></div>
+                                                    <div class="text-end"><div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>4.5</div><small class="text-muted">(\$\{reviewCount\} отзывов)</small></div>
                                                 </div>
                                                 <hr>
                                                 <p class="card-text text-muted mb-3">${description}</p>
@@ -165,3 +168,6 @@ if (session_status() === PHP_SESSION_NONE) {
 </body>
 
 </html>
+
+
+

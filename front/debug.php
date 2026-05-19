@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $url = 'http://localhost:8000/search';
 $data = ['location' => 'Москва'];
 $ch = curl_init($url);

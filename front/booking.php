@@ -13,7 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/style.css">
 </head>
 
 <body>
@@ -23,7 +23,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <div class="col-lg-5 mb-4">
                 <div class="card border-0 shadow-sm sticky-top" style="top: 100px; z-index: 1;">
                     <div class="card-body">
-                        <img src="./img/property/room_example.png" class="img-fluid rounded mb-3 w-100" alt="Жильё"
+                        <img src="../img/property/metro-plus.png" class="img-fluid rounded mb-3 w-100" alt="Жильё"
                             style="height: 250px; object-fit: cover;">
                         <h4 class="card-title fw-bold mb-2" id="propertyTitle">Загрузка...</h4>
                         <p class="text-muted mb-3"><i class="bi bi-geo-alt-fill text-danger me-1"></i><span

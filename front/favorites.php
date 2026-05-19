@@ -14,7 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <title>Избранное - BRONIC.RU</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
     <?php include 'inc/_nav.php'; ?>
@@ -64,7 +64,8 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function buildCard(item, gridMode) {
-            const img = item.image_url || './img/property/room_example.png';
+            const img = item.image_url || '../img/property/metro-plus.png';
+            const onerr = "this.src='../img/property/metro-plus.png'";
             const price = Number(item.base_price).toLocaleString('ru-RU');
             const typeNames = { 'appartment': 'Квартира', 'dacha': 'Дача', 'room': 'Комната', 'cottedzh': 'Коттедж' };
             const typeName = typeNames[item.type] || 'Недвижимость';
@@ -75,7 +76,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     <div class="card border-0 shadow-sm">
                         <div class="row g-0">
                             <div class="col-md-3 position-relative">
-                                <img src="${img}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" style="min-height:160px;" alt="${item.name}">
+                                <img src="${img}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" style="min-height:160px;" alt="${item.name}" onerror="${onerr}">
                                 <button class="btn btn-light rounded-circle position-absolute top-0 end-0 m-2 text-danger btn-remove-fav" data-id="${item.id}" title="Удалить из избранного">
                                     <i class="bi bi-heart-fill"></i>
                                 </button>
@@ -105,7 +106,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <div class="col-md-6 col-lg-4 fav-item" data-id="${item.id}">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="position-relative">
-                        <img src="${img}" class="card-img-top" style="height:200px;object-fit:cover;" alt="${item.name}">
+                        <img src="${img}" class="card-img-top" style="height:200px;object-fit:cover;" alt="${item.name}" onerror="${onerr}">
                         <button class="btn btn-light rounded-circle position-absolute top-0 end-0 m-2 text-danger btn-remove-fav" data-id="${item.id}" title="Удалить из избранного">
                             <i class="bi bi-heart-fill"></i>
                         </button>
@@ -135,9 +136,21 @@ if (session_status() === PHP_SESSION_NONE) {
                 $('#emptyFavorites').removeClass('d-none');
                 return;
             }
-
             $('#emptyFavorites').addClass('d-none');
-            favs.forEach(item => grid.append(buildCard(item, isGridView)));
+
+            // Подтягиваем свежие image_url из API
+            const promises = favs.map(fav =>
+                $.getJSON('http://localhost:8000/resources/' + fav.id)
+                  .then(fresh => ({ ...fav, image_url: fresh.image_url || fav.image_url }))
+                  .catch(() => fav)
+            );
+
+            Promise.all(promises).then(freshFavs => {
+                // Сохраняем обновлённые данные в localStorage
+                localStorage.setItem('bronic_favorites', JSON.stringify(freshFavs));
+                grid.empty();
+                freshFavs.forEach(item => grid.append(buildCard(item, isGridView)));
+            });
         }
 
         // Переключение вид

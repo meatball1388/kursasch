@@ -9,7 +9,7 @@ session_start();
     <title>Мои бронирования - BRONIC.RU</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
     <?php include 'inc/_nav.php'; ?>
@@ -97,7 +97,7 @@ session_start();
             const r = b.resource;
             const name = r ? r.name : `Объект #${b.resource_id}`;
             const address = r ? (r.address || r.location || '') : '';
-            const img = r && r.image_url ? r.image_url : './img/property/room_example.png';
+            const img = r && r.image_url ? r.image_url : '../img/property/metro-plus.png';
             const dateFrom = b.start_time ? b.start_time.split('T')[0] : '—';
             const dateTo   = b.end_time   ? b.end_time.split('T')[0]   : '—';
             const price = Number(b.price).toLocaleString('ru-RU');
