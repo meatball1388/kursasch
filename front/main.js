@@ -334,6 +334,7 @@ $(document).ready(function () {
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
             var imgUrl = item.image_url || '../img/property/metro-plus.png';
+            console.log('Loading image for ID ' + item.id + ': ' + imgUrl);
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
             var reviewCount = item.review_count || 0;
@@ -342,10 +343,10 @@ $(document).ready(function () {
 
             var cardHtml = `
                 <div class="col-12 mb-4 property-item" data-id="${item.id}" data-type="${item.type}" data-price="${item.base_price}">
-                    <div class="property-card card border-0 shadow-sm" style="cursor:pointer;" onclick="window.location='property.php?id=\$\{item.id\}'">
+                    <div class="property-card card border-0 shadow-sm" style="cursor:pointer;" onclick="window.location='property.php?id=${item.id}'">
                         <div class="row g-0">
                             <div class="col-md-4 position-relative">
-                                <img src="${imgUrl}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" alt="${name}" style="min-height: 200px;">
+                                <img src="${imgUrl}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" alt="${name}" style="min-height: 200px;" onerror="this.src='../img/property/metro-plus.png'">
                                 <button class="btn btn-favorite position-absolute top-0 end-0 m-3 border-0" title="${isFav ? 'В избранном' : 'Добавить в избранное'}" data-item='${itemJson}' data-item-id="${item.id}">
                                     <i class="bi ${heartClass}"></i>
                                 </button>
@@ -354,7 +355,7 @@ $(document).ready(function () {
                                 <div class="card-body p-4">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
-                                            <h5 class="card-title mb-1 fw-bold">${name}</h5>
+                                            <h5 class="card-title mb-1 fw-bold">${name} [RAW:${reviewCount}]</h5>
                                             <p class="card-text text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${address}</p>
                                         </div>
                                         <div class="text-end">

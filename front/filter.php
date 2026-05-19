@@ -106,55 +106,13 @@ if (session_status() === PHP_SESSION_NONE) {
                         $('#noResults').removeClass('d-none');
                         return;
                     }
-                    $('#searchResults').empty();
-                    $.each(filtered, function (index, item) {
-                        var typeNames = {
-                            'appartment': 'Квартира',
-                            'dacha': 'Дача',
-                            'room': 'Комната',
-                            'cottedzh': 'Коттедж'
-                        };
-                        var typeName = typeNames[item.type] || 'Недвижимость';
-                        var priceFormatted = Number(item.base_price).toLocaleString('ru-RU');
-                        var name = $('<div>').text(item.name || 'Без названия').html();
-                        var address = $('<div>').text(item.address || item.location ||
-                            'Адрес не указан').html();
-                        var description = $('<div>').text(item.description ||
-                            'Описание отсутствует').html();
-                        var imgUrl = item.image_url || '../img/property/metro-plus.png';
-                        var reviewCount = item.review_count || 0;
-                        var ratingVal = item.avg_rating > 0 ? parseFloat(item.avg_rating).toFixed(1) : '4.8';
-                        var cardHtml = `
-                            <div class="col-12 mb-4 property-item" data-type="${item.type}" data-price="${item.base_price}">
-                                <div class="property-card card border-0 shadow-sm" style="cursor:pointer;" data-prop-id="${item.id}">
-                                    <div class="row g-0">
-                                        <div class="col-md-4 position-relative">
-                                            <img src="${imgUrl}" class="img-fluid rounded-start" alt="${name.replace(/"/g, '&quot;')}" onerror="this.src='../img/property/metro-plus.png'">
-                                            <button class="btn btn-favorite position-absolute top-0 end-0 m-3 border-0"><i class="bi bi-heart"></i></button>
-                                        </div>
-                                        <div class="col-md-8">
-                                            <div class="card-body p-4">
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <div><h5 class="card-title mb-1 fw-bold">${name}</h5><p class="card-text text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${address}</p></div>
-                                                    <div class="text-end"><div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>4.5</div><small class="text-muted">(\$\{reviewCount\} отзывов)</small></div>
-                                                </div>
-                                                <hr>
-                                                <p class="card-text text-muted mb-3">${description}</p>
-                                                <div class="mb-3"><span class="badge bg-light text-dark me-1"><i class="bi bi-tag me-1"></i>${typeName}</span></div>
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <div class="fw-bold fs-4 text-danger">${priceFormatted} ₽ <span class="text-muted fs-6 fw-normal">/ сутки</span></div>
-                                                    <div class="d-flex gap-2">
-                                                        <button class="btn btn-outline-primary btn-show-phone" data-phone-visible="false"><i class="bi bi-telephone me-1"></i>Показать телефон</button>
-                                                        <button class="btn btn-danger btn-book" data-name="${name}" data-price="${item.base_price}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        $('#searchResults').append(cardHtml);
-                    });
+                    
+                    if (typeof renderPropertyCards === 'function') {
+                        renderPropertyCards(filtered, '#searchResults');
+                    } else {
+                        // Fallback if main.js is not fully loaded or function is missing
+                        console.error('renderPropertyCards is not defined');
+                    }
                 },
                 error: function (xhr, status, error) {
                     $('#loadingSpinner').hide();

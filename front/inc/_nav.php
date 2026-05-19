@@ -10,9 +10,6 @@
             <a href="favorites.php" class="text-white text-decoration-none d-flex align-items-center gap-2"><i
                     class="bi bi-heart"></i><span>Избранное</span></a>
             <?php
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
             if (isset($_SESSION['user']) && $_SESSION['user']['logged_in']): 
                 $userName = explode('@', $_SESSION['user']['email'])[0];
             ?>
