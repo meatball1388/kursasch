@@ -333,7 +333,7 @@ $(document).ready(function () {
             var name = escapeHtml(item.name || 'Без названия');
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
-            var imgUrl = item.image_url || '/img/property/metro-plus.png';
+            var imgUrl = item.image_url || '/metro-plus.png';
             console.log('Loading image for ID ' + item.id + ': ' + imgUrl);
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';

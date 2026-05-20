@@ -14,7 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
-    <link rel="stylesheet" href="/assets/style.css">
+    <link rel="stylesheet" href="/custom.css">
 </head>
 
 <body>
@@ -309,7 +309,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 var name = $('<div>').text(item.name || 'Объект #' + rec.property_id).html();
                                 var address = $('<div>').text(item.address || item.location || '').html();
                                 var price = Number(item.base_price || 0).toLocaleString('ru-RU');
-                                var imgUrl = item.image_url || '/img/property/metro-plus.png';
+                                var imgUrl = item.image_url || '/metro-plus.png';
 
                                 var card = `
                                     <div class="col-md-4 col-sm-6">

@@ -169,10 +169,10 @@ async def search(request: Request):
             d = dict(row)
             print(f"DEBUG: Property {d['id']} has {d['review_count']} reviews in DB")
             
-            # Ensure local paths point to the proper directory
+            # Ensure local paths point to the root
             if d.get("image_url") and not d["image_url"].startswith("http"):
                 fname = d["image_url"].split("/")[-1]
-                d["image_url"] = f"/img/property/{fname}"
+                d["image_url"] = f"/{fname}"
 
             # FORCE LOCAL PATHS for external sources
             if d.get("image_url"):
@@ -519,10 +519,10 @@ async def get_resource(request: Request, resource_id: int):
         
         d = dict(row)
         
-        # Ensure local paths point to the proper directory
+        # Ensure local paths point to the root
         if d.get("image_url") and not d["image_url"].startswith("http"):
             fname = d["image_url"].split("/")[-1]
-            d["image_url"] = f"/img/property/{fname}"
+            d["image_url"] = f"/{fname}"
 
         if d.get("image_url") and ("http" in d["image_url"]):
             mapping = {
