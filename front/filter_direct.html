@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Прямой тест API</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <h2>Результаты прямого запроса к бэкенду</h2>
+    <div id="output"></div>
+    <script>
+        fetch('http://localhost:8000/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location: 'Москва' })
+        })
+            .then(r => r.json())
+            .then(data => {
+                const out = document.getElementById('output');
+                out.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                if (data.results && data.results.length) {
+                    let html = '<div class="cards">';
+                    data.results.forEach(item => {
+                        html += `<div class="card">
+                        <h3>${item.name}</h3>
+                        <p>${item.description}</p>
+                        <p>${item.address || item.location}</p>
+                        <p>Цена: ${item.base_price} ₽</p>
+                    </div><hr>`;
+                    });
+                    html += '</div>';
+                    out.innerHTML += html;
+                }
+            })
+            .catch(e => out.innerText = 'Ошибка: ' + e);
+    </script>
+</body>
+
+</html>

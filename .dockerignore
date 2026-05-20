@@ -1,0 +1,13 @@
+# Git
+.git/
+.gitignore
+
+# Docker
+**/Dockerfile
+**/.dockerignore
+
+# Логи
+*.log
+
+# Временные файлы
+*.tmp

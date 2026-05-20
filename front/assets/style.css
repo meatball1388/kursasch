@@ -1,0 +1,497 @@
+﻿body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.face {
+    background-image: url(../img/neboskreb.jpg);
+    height: 70vh;
+    position: relative;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-attachment: fixed;
+    z-index: 0;
+
+    /* ╨ж╨╡╨╜╤В╤А╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡ ╨║╨╛╨╜╤В╨╡╨╜╤В╨░ */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.face h1 {
+    color: #fff;
+    text-shadow: 4px 4px 8px rgba(0, 0, 0, 1);
+    font-size: 2.5rem;
+    margin: 0;
+}
+
+.face p {
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+    margin: 0;
+    margin-top: 10px;
+}
+
+/* ╨г╨▒╨╕╤А╨░╨╡╨╝ ╨Т╨б╨Х ╤Д╨╛╨╜╤Л ╤Г ╤Д╨╛╤А╨╝╤Л */
+.face form {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+/* ╨Я╨╛╨╗╤П ╨▓╨▓╨╛╨┤╨░ ╤Б ╨▒╨╡╨╗╤Л╨╝ ╤Д╨╛╨╜╨╛╨╝ */
+.face .form-control,
+.face .form-select {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+/* ╨Ъ╨╜╨╛╨┐╨║╨░ "╨б╨╝╨╛╤В╤А╨╡╤В╤М ╤Ж╨╡╨╜╤Л" */
+.face .btn-danger {
+    background-color: #fe496a;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* ╨Ю╨┤╨╕╨╜╨░╨║╨╛╨▓╨░╤П ╨▓╤Л╤Б╨╛╤В╨░ ╨┤╨╗╤П ╨▓╤Б╨╡╤Е ╤Н╨╗╨╡╨╝╨╡╨╜╤В╨╛╨▓ */
+.face .form-control,
+.face .btn,
+.face input,
+.face button,
+.face .form-select {
+    height: 54px;
+    line-height: 1.5;
+}
+
+.face .btn-danger {
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╤З╨╡╨║╨▒╨╛╨║╤Б╨╛╨▓ */
+.form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.form-group input[type="checkbox"] {
+    margin: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.form-group label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+/* ╨Р╨┤╨░╨┐╤В╨░╤Ж╨╕╤П ╨┤╨╗╤П ╨╝╨╛╨▒╨╕╨╗╤М╨╜╤Л╤Е */
+@media (max-width: 768px) {
+    .face h1 {
+        font-size: 1.8rem;
+    }
+
+    .face .form-control,
+    .face .btn {
+        height: 48px;
+    }
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╨║╨░╤А╤В╨╛╤З╨╡╨║ */
+.card-content {
+    padding: 15px;
+}
+
+.card-content__object-subtext {
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.object-hotel__type {
+    font-size: 14px;
+}
+
+.card-prices__top {
+    background: #f8f9fa;
+    padding: 10px;
+    text-align: center;
+    border-radius: 5px;
+}
+
+/* ╨б╨╗╨░╨╣╨┤╨╡╤А ╤Ж╨╡╨╜ */
+#slider-range {
+    margin: 15px 0;
+}
+
+#amount {
+    font-weight: bold;
+    color: #f6931f;
+}
+
+#slider-range {
+    width: 100px;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╤Б╨╗╨░╨╣╨┤╨╡╤А╨░ ╤Ж╨╡╨╜╤Л */
+.price-inputs {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.input-field {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-field input {
+    width: 100%;
+    padding: 10px 35px 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.input-field .currency {
+    position: absolute;
+    right: 12px;
+    color: #666;
+    font-size: 14px;
+}
+
+.input-field .plus {
+    position: absolute;
+    right: 30px;
+    color: #666;
+    font-size: 14px;
+}
+
+.separator {
+    color: #666;
+    font-size: 18px;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П jQuery UI slider */
+#slider-range {
+    width: 100%;
+    height: 4px;
+    background: #e0e0e0;
+    border: none;
+    border-radius: 2px;
+    margin: 15px 0;
+}
+
+#slider-range .ui-slider-range {
+    background: #fe496a;
+    border: none;
+    height: 4px;
+    border-radius: 2px;
+}
+
+#slider-range .ui-slider-handle {
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border: 3px solid #fe496a;
+    border-radius: 50%;
+    cursor: pointer;
+    top: -7px;
+    transition: transform 0.2s;
+}
+
+#slider-range .ui-slider-handle:hover {
+    transform: scale(1.2);
+}
+
+#slider-range .ui-slider-handle:focus {
+    outline: none;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╨▓╨╡╤А╤Е╨╜╨╡╨╣ ╨╜╨░╨▓╨╕╨│╨░╤Ж╨╕╨╕ */
+.navbar-dark.bg-dark {
+    background-color: #1a1a1a !important;
+}
+
+.navbar-brand .badge {
+    background-color: #e91e63 !important;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.navbar .text-white:hover {
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.navbar .dropdown-toggle::after {
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╨╝╨╛╨┤╨░╨╗╤М╨╜╨╛╨│╨╛ ╨╛╨║╨╜╨░ */
+#loginModal .modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#loginModal .modal-header {
+    padding: 20px 24px 10px;
+}
+
+#loginModal .modal-body {
+    padding: 24px;
+}
+
+#loginModal .modal-title {
+    font-size: 1.5rem;
+}
+
+#loginModal .form-control {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+#loginModal .form-control:focus {
+    border-color: #fe496a;
+    box-shadow: 0 0 0 0.2rem rgba(254, 73, 106, 0.25);
+}
+
+#loginModal .btn-danger {
+    background-color: #fe496a;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+#loginModal .btn-danger:hover {
+    background-color: #e03d5a;
+}
+
+#loginModal .form-check-input:checked {
+    background-color: #fe496a;
+    border-color: #fe496a;
+}
+
+#loginModal a {
+    color: #fe496a;
+}
+
+#loginModal a:hover {
+    color: #e03d5a;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╨╝╨╛╨┤╨░╨╗╤М╨╜╨╛╨│╨╛ ╨╛╨║╨╜╨░ ╨┐╨╛╨┤╨┤╨╡╤А╨╢╨║╨╕ */
+#supportModal .modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#supportModal .modal-header {
+    padding: 20px 24px 15px;
+}
+
+#supportModal .modal-title {
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+}
+
+#supportModal .modal-body {
+    padding: 24px;
+}
+
+#supportModal .support-phone {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+#supportModal .support-phone-link:hover {
+    color: #e03d5a !important;
+    text-decoration: underline;
+}
+
+#supportModal .form-control,
+#supportModal .form-select {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+#supportModal .form-control:focus,
+#supportModal .form-select:focus {
+    border-color: #fe496a;
+    box-shadow: 0 0 0 0.2rem rgba(254, 73, 106, 0.25);
+}
+
+#supportModal textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+}
+
+#supportModal .btn-danger {
+    background-color: #fe496a;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+#supportModal .btn-danger:hover {
+    background-color: #e03d5a;
+    transform: translateY(-1px);
+}
+
+#supportModal hr {
+    border-color: #dee2e6;
+    margin: 20px 0;
+}
+
+/* ╨б╤В╨╕╨╗╨╕ ╨┤╨╗╤П ╨║╨░╤А╤В╨╛╤З╨╡╨║ ╨╜╨╡╨┤╨▓╨╕╨╢╨╕╨╝╨╛╤Б╤В╨╕ */
+.property-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+.property-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.property-image-wrapper {
+    height: 100%;
+    min-height: 280px;
+    overflow: hidden;
+}
+
+.property-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.property-card:hover .property-image-wrapper img {
+    transform: scale(1.05);
+}
+
+.property-badge .badge {
+    background-color: #fe496a !important;
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.btn-favorite {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s;
+}
+
+.btn-favorite:hover {
+    background: #fe496a;
+    color: white;
+    transform: scale(1.1);
+}
+
+.btn-favorite i.active {
+    color: #fe496a;
+}
+
+.property-rating {
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+}
+
+.rating-value {
+    font-size: 1.1rem;
+}
+
+.feature-item i {
+    color: #fe496a;
+}
+
+.property-amenities .badge {
+    padding: 0.4rem 0.6rem;
+    font-weight: 400;
+    border-radius: 6px;
+}
+
+.price-main {
+    color: #fe496a !important;
+}
+
+.btn-danger {
+    background-color: #fe496a;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-danger:hover {
+    background-color: #e03d5a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(254, 73, 106, 0.3);
+}
+
+.btn-outline-primary {
+    border-color: #fe496a;
+    color: #fe496a;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+    background-color: #fe496a;
+    border-color: #fe496a;
+    color: white;
+}
+
+/* ╨Р╨┤╨░╨┐╤В╨░╤Ж╨╕╤П ╨┤╨╗╤П ╨╝╨╛╨▒╨╕╨╗╤М╨╜╤Л╤Е */
+@media (max-width: 768px) {
+    .d-flex.gap-2 {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .d-flex.gap-2 .btn {
+        width: 100%;
+    }
+}
+
+/* Стили для плейсхолдеров (делаем точки пароля менее яркими) */
+::placeholder {
+    color: #adb5bd !important; /* Светло-серый цвет Bootstrap */
+    opacity: 0.6 !important;
+    font-weight: normal !important;
+}
+
+/* Специально для полей пароля, чтобы точки не казались "жирными" */
+input[type="password"]::placeholder {
+    letter-spacing: 2px;
+}
