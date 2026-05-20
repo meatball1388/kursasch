@@ -6,7 +6,7 @@
 }
 
 .face {
-    background-image: url(../img/neboskreb.jpg);
+    background-image: url(/img/neboskreb.jpg);
     height: 70vh;
     position: relative;
     background-size: cover;
