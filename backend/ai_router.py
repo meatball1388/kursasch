@@ -46,26 +46,34 @@ async def recommend(request: Request, body: RecommendRequest):
         db_type = type_map.get(body.property_type, body.property_type)
 
         async with pool.acquire() as con:
-            # Step 1: Strict filtering by type if possible
+            # Step 1: Strict filtering by type and PRICE if possible
             rows = await con.fetch(
-                "SELECT id FROM resources WHERE is_active = TRUE AND type = $1",
-                db_type
+                """SELECT id FROM resources 
+                   WHERE is_active = TRUE AND type = $1 
+                   AND base_price >= $2 AND base_price <= $3""",
+                db_type, body.min_price, body.max_price
             )
             candidate_ids = [r["id"] for r in rows]
 
-            # Step 2: If no strict matches by type, fall back to city or all active
+            # Step 2: If no strict matches by type + price, fall back to city + price
             if not candidate_ids:
                 rows = await con.fetch(
-                    "SELECT id FROM resources WHERE is_active = TRUE AND location ILIKE $1",
-                    f"%{body.city}%"
+                    """SELECT id FROM resources 
+                       WHERE is_active = TRUE AND location ILIKE $1
+                       AND base_price >= $2 AND base_price <= $3""",
+                    f"%{body.city}%", body.min_price, body.max_price
                 )
                 candidate_ids = [r["id"] for r in rows]
             
+            # Step 3: Final fallback: all active within price range
             if not candidate_ids:
-                rows = await con.fetch("SELECT id FROM resources WHERE is_active = TRUE")
+                rows = await con.fetch(
+                    "SELECT id FROM resources WHERE is_active = TRUE AND base_price >= $1 AND base_price <= $2",
+                    body.min_price, body.max_price
+                )
                 candidate_ids = [r["id"] for r in rows]
 
-            # Step 3: Rank candidates using AI model
+            # Rank candidates using AI model
             results = get_recommendations(
                 city=body.city,
                 property_type=body.property_type,

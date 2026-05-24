@@ -34,11 +34,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS — разрешаем запросы с PHP-фронта (XAMPP, порт 80)
+# CORS — разрешаем запросы с любого источника (включая локальную сеть и разные порты)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origin_regex=".*",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
