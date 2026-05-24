@@ -37,13 +37,7 @@ app = FastAPI(lifespan=lifespan)
 # CORS — разрешаем запросы с PHP-фронта (XAMPP, порт 80)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://127.0.0.1",
-        "http://localhost:80",
-        "http://127.0.0.1:80",
-        "http://localhost:8080",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -554,6 +548,69 @@ async def my_bookings(request: Request, user_id: int):
                     d[k] = v.isoformat()
             results.append(d)
         return {"bookings": results}
+
+
+# ==============================================================
+# ПЛАТЕЖИ (POST /payments/create, POST /payments/confirm)
+# ==============================================================
+
+@app.post("/payments/create")
+async def create_payment(request: Request):
+    pool = request.app.state.pool
+    try:
+        data = await request.json()
+        booking_id = int(data.get("booking_id"))
+        amount = float(data.get("amount"))
+
+        async with pool.acquire() as con:
+            # Создаем запись в таблице payments
+            result = await con.fetchrow(
+                """INSERT INTO payments (booking_id, amount, status, payment_method)
+                   VALUES ($1, $2, 'PENDING', 'YooKassa') RETURNING id""",
+                booking_id, amount
+            )
+            payment_id = result["id"]
+            
+            # В реальной жизни тут был бы запрос к API ЮKassa
+            # Мы возвращаем "confirmation_url" на наш фейковый терминал
+            return {
+                "id": payment_id,
+                "confirmation_url": f"payment.php?payment_id={payment_id}&amount={amount}&booking_id={booking_id}"
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/payments/confirm")
+async def confirm_payment(request: Request):
+    pool = request.app.state.pool
+    try:
+        data = await request.json()
+        payment_id = int(data.get("payment_id"))
+
+        async with pool.acquire() as con:
+            # Находим платеж
+            payment = await con.fetchrow(
+                "SELECT booking_id, amount FROM payments WHERE id = $1", payment_id
+            )
+            if not payment:
+                return {"error": "Платеж не найден"}
+
+            # Обновляем статус платежа
+            await con.execute(
+                "UPDATE payments SET status = 'SUCCESS', created_at = $1 WHERE id = $2",
+                datetime.now(), payment_id
+            )
+
+            # Обновляем статус бронирования
+            await con.execute(
+                "UPDATE bookings SET status = 'PAID' WHERE id = $1",
+                payment["booking_id"]
+            )
+
+            return {"success": True, "message": "Оплата подтверждена"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == '__main__':

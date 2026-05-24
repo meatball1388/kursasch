@@ -1,5 +1,5 @@
 <?php
-$url = 'http://localhost:8000/search';
+$url = 'http://127.0.0.1:8000/search';
 $data = ['location' => 'Москва'];
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

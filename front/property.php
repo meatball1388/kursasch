@@ -11,6 +11,7 @@ $propertyId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 <link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="../img/bronic.png" type="image/png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 * { font-family: 'Inter', sans-serif; }
@@ -254,11 +255,11 @@ $propertyId = isset($_GET['id']) ? intval($_GET['id']) : 0;
                             <div class="row g-2">
                                 <div class="col-6">
                                     <label class="form-label small text-muted mb-1">Заезд</label>
-                                    <input type="date" class="form-control" id="checkinDate" style="border-radius:10px;">
+                                    <input type="text" class="form-control" id="checkinDate" style="border-radius:10px;" placeholder="дд.мм.гггг">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small text-muted mb-1">Выезд</label>
-                                    <input type="date" class="form-control" id="checkoutDate" style="border-radius:10px;">
+                                    <input type="text" class="form-control" id="checkoutDate" style="border-radius:10px;" placeholder="дд.мм.гггг">
                                 </div>
                             </div>
                         </div>
@@ -294,7 +295,7 @@ $propertyId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 const PID = <?= $propertyId ?>;
-const API = 'http://localhost:8000';
+const API = 'http://' + window.location.hostname + ':8000';
 let propertyData = null;
 
 function esc(s) { return $('<div>').text(s||'').html(); }
@@ -388,26 +389,70 @@ function renderPage(item, reviews) {
 }
 
 // Date inputs — today and tomorrow default
+const urlParams = new URLSearchParams(window.location.search);
+let checkinParam = urlParams.get('checkin');
+let checkoutParam = urlParams.get('checkout');
+
+function formatDate(date) {
+    let d = date.getDate(),
+        m = date.getMonth() + 1,
+        y = date.getFullYear();
+    return `${d < 10 ? '0' + d : d}.${m < 10 ? '0' + m : m}.${y}`;
+}
+
 const today = new Date(), tomorrow = new Date(today);
-tomorrow.setDate(today.getDate()+1);
-$('#checkinDate').val(today.toISOString().split('T')[0]);
-$('#checkoutDate').val(tomorrow.toISOString().split('T')[0]);
+tomorrow.setDate(today.getDate()+2);
+
+let finalCheckin = checkinParam || formatDate(new Date());
+let finalCheckout = checkoutParam || formatDate(tomorrow);
+
+$('#checkinDate').val(finalCheckin);
+$('#checkoutDate').val(finalCheckout);
+
+// Инициализация datepicker для property.php (так как он тут тоже нужен)
+if ($.fn.datepicker) {
+    $("#checkinDate").datepicker({
+        dateFormat: "dd.mm.yy",
+        minDate: 0,
+        onSelect: function(selected) {
+            let min = $.datepicker.parseDate('dd.mm.yy', selected);
+            min.setDate(min.getDate() + 2);
+            $('#checkoutDate').datepicker('option', 'minDate', min);
+            updatePriceBreakdown();
+        }
+    });
+    $("#checkoutDate").datepicker({
+        dateFormat: "dd.mm.yy",
+        minDate: 2,
+        onSelect: updatePriceBreakdown
+    });
+}
 
 // Price breakdown
 function updatePriceBreakdown() {
     if (!propertyData) return;
-    const ci = new Date($('#checkinDate').val());
-    const co = new Date($('#checkoutDate').val());
-    const nights = Math.round((co-ci)/(86400000));
-    if (nights > 0) {
-        const pricePerNight = propertyData.base_price;
-        const total = pricePerNight * nights;
-        $('#pricePerNightLabel').text(`${Number(pricePerNight).toLocaleString('ru-RU')} ₽ × ${nights} ночей`);
-        $('#pricePerNightTotal').text(`${Number(total).toLocaleString('ru-RU')} ₽`);
-        $('#priceTotal').text(`${Number(total).toLocaleString('ru-RU')} ₽`);
-        $('#priceBreakdown').removeClass('d-none');
-    } else {
-        $('#priceBreakdown').addClass('d-none');
+    
+    let ciVal = $('#checkinDate').val();
+    let coVal = $('#checkoutDate').val();
+    
+    if (ciVal && coVal) {
+        try {
+            const ci = $.datepicker.parseDate('dd.mm.yy', ciVal);
+            const co = $.datepicker.parseDate('dd.mm.yy', coVal);
+            const nights = Math.round((co-ci)/(86400000));
+            if (nights > 0) {
+                const pricePerNight = propertyData.base_price;
+                const total = pricePerNight * nights;
+                $('#pricePerNightLabel').text(`${Number(pricePerNight).toLocaleString('ru-RU')} ₽ × ${nights} ночей`);
+                $('#pricePerNightTotal').text(`${Number(total).toLocaleString('ru-RU')} ₽`);
+                $('#priceTotal').text(`${Number(total).toLocaleString('ru-RU')} ₽`);
+                $('#priceBreakdown').removeClass('d-none');
+            } else {
+                $('#priceBreakdown').addClass('d-none');
+            }
+        } catch(e) {
+            $('#priceBreakdown').addClass('d-none');
+        }
     }
 }
 $('#checkinDate, #checkoutDate').on('change', updatePriceBreakdown);
@@ -417,7 +462,12 @@ $('#bookBtn').on('click', function() {
     if (!propertyData) return;
     const ci = $('#checkinDate').val();
     const co = $('#checkoutDate').val();
-    window.location = `booking.php?id=${propertyData.id}&name=${encodeURIComponent(propertyData.name)}&price=${propertyData.base_price}&location=${encodeURIComponent(propertyData.address||propertyData.location||'')}&checkin=${ci}&checkout=${co}`;
+    
+    // Получаем гостей из URL если они там были
+    const adults = urlParams.get('adults') || 2;
+    const children = urlParams.get('children') || 0;
+    
+    window.location = `booking.php?id=${propertyData.id}&name=${encodeURIComponent(propertyData.name)}&price=${propertyData.base_price}&location=${encodeURIComponent(propertyData.address||propertyData.location||'')}&checkin=${ci}&checkout=${co}&adults=${adults}&children=${children}`;
 });
 
 // Star selector

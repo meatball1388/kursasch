@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 <body>
     <?php include 'inc/_nav.php'; ?>
@@ -137,7 +138,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
             // Подтягиваем свежие image_url из API
             const promises = favs.map(fav =>
-                $.getJSON('http://localhost:8000/resources/' + fav.id)
+                $.getJSON('http://' + window.location.hostname + ':8000/resources/' + fav.id)
                   .then(fresh => ({ ...fav, image_url: fresh.image_url || fav.image_url }))
                   .catch(() => fav)
             );

@@ -1,7 +1,9 @@
 <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
     <div class="container">
-        <a class="navbar-brand d-flex align-items-center" href="index.php"><span
-                class="fw-bold fs-4 text-white me-2">BRONIC.RU</span></a>
+        <a class="navbar-brand d-flex align-items-center" href="index.php">
+            <span class="fw-bold fs-4 text-white me-2">BRONIC.RU</span>
+            <img src="../img/bronic.png" alt="Logo" width="30" height="30" class="rounded-circle" style="flex-shrink: 0;">
+        </a>
         <div class="d-flex align-items-center gap-4">
             <a href="rent.php" class="text-white text-decoration-none d-flex align-items-center gap-2"><i
                     class="bi bi-house-door"></i><span>Сдать жильё</span></a>

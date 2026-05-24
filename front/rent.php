@@ -19,6 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <!-- Ваш CSS -->
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 
 <body>
@@ -263,7 +264,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 };
 
                 $.ajax({
-                    url: 'http://localhost:8000/resources',
+                    url: 'http://' + window.location.hostname + ':8000/resources',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(apiData),

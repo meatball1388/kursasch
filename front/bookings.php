@@ -10,6 +10,7 @@ session_start();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 <body>
     <?php include 'inc/_nav.php'; ?>
@@ -104,6 +105,14 @@ session_start();
             const cancelBtn = active
                 ? `<button class="btn btn-outline-danger w-100 mb-2 btn-cancel" data-id="${b.id}"><i class="bi bi-x-circle me-1"></i>Отменить</button>`
                 : '';
+            
+            let payBtn = '';
+            if (active && b.status === 'CREATED') {
+                payBtn = `<button class="btn btn-primary w-100 mb-2 btn-pay-now" data-id="${b.id}" data-amount="${b.price}">
+                            <i class="bi bi-credit-card me-1"></i>Оплатить
+                          </button>`;
+            }
+
             return `
             <div class="card border-0 shadow-sm mb-3" id="booking-${b.id}">
                 <div class="card-body">
@@ -121,6 +130,7 @@ session_start();
                         </div>
                         <div class="col-md-3 text-md-end">
                             <div class="fw-bold fs-5 mb-3">${price} ₽</div>
+                            ${payBtn}
                             ${cancelBtn}
                             <button class="btn btn-outline-secondary w-100 btn-details"
                                 data-name="${name}" data-addr="${address}"
@@ -138,7 +148,7 @@ session_start();
             const userEmail = "<?php echo isset($_SESSION['user']) ? $_SESSION['user']['email'] : ''; ?>";
             
             $.ajax({
-                url: 'http://localhost:8000/admin_api',
+                url: 'http://' + window.location.hostname + ':8000/admin_api',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ action: 'get_all', table: 'bookings' }),
@@ -171,7 +181,7 @@ session_start();
             if (!confirm('Вы уверены, что хотите отменить это бронирование?')) return;
             const id = $(this).data('id');
             $.ajax({
-                url: 'http://localhost:8000/admin_api',
+                url: 'http://' + window.location.hostname + ':8000/admin_api',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ action: 'update', table: 'bookings', id: id, fields: { status: 'CANCELLED' } }),
@@ -181,6 +191,32 @@ session_start();
                     } else {
                         alert('Ошибка при отмене');
                     }
+                }
+            });
+        });
+
+        // Оплата сейчас
+        $(document).on('click', '.btn-pay-now', function() {
+            const id = $(this).data('id');
+            const amount = $(this).data('amount');
+            
+            $.ajax({
+                url: 'http://' + window.location.hostname + ':8000/payments/create',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    booking_id: id,
+                    amount: amount
+                }),
+                success: function(payRes) {
+                    if (payRes.confirmation_url) {
+                        window.location.href = payRes.confirmation_url;
+                    } else {
+                        alert('Ошибка инициализации платежа');
+                    }
+                },
+                error: function() {
+                    alert('Ошибка сервера при создании платежа');
                 }
             });
         });

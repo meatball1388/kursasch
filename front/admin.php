@@ -25,6 +25,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
 .action-btn{width:30px;height:30px;border-radius:8px;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;transition:.15s;cursor:pointer;}
 .action-btn:hover{transform:scale(1.12);}
 </style>
+<link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 <body class="bg-light">
 <?php include 'inc/_nav.php'; ?>
@@ -215,7 +216,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const API = 'http://localhost:8000';
+const API = 'http://' + window.location.hostname + ':8000';
 let cache = {users:[],resources:[],bookings:[]};
 let currentTable = 'users', currentEditId = null;
 const typeNames = {appartment:'Квартира',apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж'};

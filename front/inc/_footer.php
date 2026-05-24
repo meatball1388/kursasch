@@ -4,10 +4,10 @@
             <div class="col-md-4">
                 <h5>Соцсети</h5>
                 <div class="d-flex gap-3">
-                    <a href="#" class="text-decoration-none text-secondary">ВК</a>
-                    <a href="#" class="text-decoration-none text-secondary">Телеграмм</a>
-                    <a href="#" class="text-decoration-none text-secondary">Одноклассники</a>
-                    <a href="#" class="text-decoration-none text-secondary">Инстаграмм</a>
+                    <a href="#" class="text-decoration-none text-secondary d-flex align-items-center gap-1"><i class="bi bi-chat-dots"></i>ВК</a>
+                    <a href="#" class="text-decoration-none text-secondary d-flex align-items-center gap-1"><i class="bi bi-telegram"></i>Телеграмм</a>
+                    <a href="#" class="text-decoration-none text-secondary d-flex align-items-center gap-1"><i class="bi bi-people"></i>Одноклассники</a>
+                    <a href="#" class="text-decoration-none text-secondary d-flex align-items-center gap-1"><i class="bi bi-instagram"></i>Инстаграмм</a>
                 </div>
                 <p class="small text-muted mt-2">Подписывайтесь на наши соцсети</p>
             </div>

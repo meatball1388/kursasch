@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 <body class="bg-light">
 
@@ -88,7 +89,7 @@ if (session_status() === PHP_SESSION_NONE) {
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Вход...');
             
             $.ajax({
-                url: 'http://localhost:8000/login',
+                url: 'http://' + window.location.hostname + ':8000/login',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({

@@ -19,6 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <!-- Ваш CSS -->
     <link rel="stylesheet" href="../assets/style.css">
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 
 <body class="bg-light">
@@ -185,7 +186,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 // return false;
 
                 $.ajax({
-                    url: 'http://localhost:8000/register',
+                    url: 'http://' + window.location.hostname + ':8000/register',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(data),
@@ -194,7 +195,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         if (response.message === 'ok') {
                             // Автоматически входим после регистрации
                             $.ajax({
-                                url: 'http://localhost:8000/login',
+                                url: 'http://' + window.location.hostname + ':8000/login',
                                 method: 'POST',
                                 contentType: 'application/json',
                                 data: JSON.stringify({

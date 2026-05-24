@@ -5,13 +5,14 @@
     <meta charset="UTF-8">
     <title>Прямой тест API</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="icon" href="../img/bronic.png" type="image/png">
 </head>
 
 <body>
     <h2>Результаты прямого запроса к бэкенду</h2>
     <div id="output"></div>
     <script>
-        fetch('http://localhost:8000/search', {
+        fetch('http://' + window.location.hostname + ':8000/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ location: 'Москва' })
