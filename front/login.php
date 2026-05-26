@@ -107,6 +107,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             method: 'POST',
                             contentType: 'application/json',
                             data: JSON.stringify({
+                                id: response.id,
                                 email: response.email,
                                 name: response.name,
                                 surname: response.surname,

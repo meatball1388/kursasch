@@ -534,6 +534,19 @@ if (PID) {
 } else {
     $('#pageLoader').html('<div class="container"><div class="alert alert-warning text-center mt-5">Укажите ID объекта. <a href="index.php" class="text-warning">На главную</a></div></div>');
 }
+
+// ========== 11. ПОКАЗАТЬ ТЕЛЕФОН ==========
+$(document).on('click', '.btn-show-phone', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    if ($btn.data('phone-visible') === true) {
+        $btn.html('<i class="bi bi-telephone me-2"></i>Показать телефон').removeClass('btn-success').addClass('btn-outline-secondary');
+        $btn.data('phone-visible', false);
+    } else {
+        $btn.html('<i class="bi bi-telephone me-2"></i>+7 (495) 123-45-67').removeClass('btn-outline-secondary').addClass('btn-success');
+        $btn.data('phone-visible', true);
+    }
+});
 </script>
 </body>
 </html>

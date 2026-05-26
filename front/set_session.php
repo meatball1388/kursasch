@@ -10,6 +10,7 @@ $data = json_decode($input, true);
 
 if ($data && isset($data['email'])) {
     $_SESSION['user'] = [
+        'id' => $data['id'] ?? null,
         'email' => $data['email'],
         'name' => $data['name'] ?? '',
         'surname' => $data['surname'] ?? '',

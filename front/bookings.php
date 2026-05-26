@@ -145,14 +145,13 @@ session_start();
 
         function loadBookings() {
             const userEmail = "<?php echo isset($_SESSION['user']) ? $_SESSION['user']['email'] : ''; ?>";
+            const userId = "<?php echo isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : '1'; ?>";
             
             $.ajax({
-                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ action: 'get_all', table: 'bookings' }),
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/my-bookings?user_id=' + userId,
+                method: 'GET',
                 success: function(res) {
-                    const myBookings = (res.results || []).filter(b => b.user_email === userEmail);
+                    const myBookings = res.bookings || [];
                     
                     const active   = myBookings.filter(b => b.status !== 'CANCELLED' && b.status !== 'COMPLETED');
                     const inactive = myBookings.filter(b => b.status === 'CANCELLED' || b.status === 'COMPLETED');

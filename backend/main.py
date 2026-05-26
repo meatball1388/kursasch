@@ -81,10 +81,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS — разрешаем запросы с любого источника (подходит для любых IP и портов)
+# CORS — разрешаем запросы с любого источника
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -298,6 +298,7 @@ async def check_login(request: Request):
                     "success": "true",
                     "redirect": "index.php",
                     "message": "вход успешен",
+                    "id": result[0]["id"],
                     "role": result[0]["role"],
                     "name": result[0].get("name", ""),
                     "surname": result[0].get("surname", ""),
@@ -576,6 +577,29 @@ async def get_resource(request: Request, resource_id: int):
 async def my_bookings(request: Request, user_id: int):
     pool = request.app.state.pool
     async with pool.acquire() as con:
+        # Сначала пробуем обновить статусы для всех PENDING платежей этого пользователя
+        pending_payments = await con.fetch(
+            """SELECT p.id, p.external_id, b.id as booking_id 
+               FROM payments p 
+               JOIN bookings b ON p.booking_id = b.id 
+               WHERE b.user_id = $1 AND p.status = 'PENDING'""",
+            user_id
+        )
+        
+        for pay in pending_payments:
+            try:
+                print(f"DEBUG: Checking YooKassa status for payment {pay['id']} (ext_id: {pay['external_id']})")
+                payment_info = YooPayment.find_one(pay["external_id"])
+                print(f"DEBUG: YooKassa status for {pay['id']} is {payment_info.status}")
+                if payment_info.status == "succeeded":
+                    print(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID")
+                    await con.execute("UPDATE payments SET status = 'SUCCESS' WHERE id = $1", pay["id"])
+                    await con.execute("UPDATE bookings SET status = 'PAID' WHERE id = $1", pay["booking_id"])
+            except Exception as e:
+                print(f"DEBUG: Error checking payment {pay['id']}: {str(e)}")
+                pass # Игнорируем ошибки связи с ЮKassa
+
+        # Теперь возвращаем актуальный список
         rows = await con.fetch(
             """SELECT b.id, b.status, b.start_time, b.end_time, b.price, b.created_at,
                       r.id as resource_id, r.name as resource_name, r.address, r.location, r.image_url
@@ -610,6 +634,9 @@ async def create_payment(request: Request):
         booking_id = int(data.get("booking_id"))
         amount = float(data.get("amount"))
 
+        # Формируем URL возврата на основе FRONTEND_URL из окружения
+        frontend_base = (os.getenv("FRONTEND_URL") or f"http://{request.base_url.hostname}").rstrip("/")
+        
         # Создаем платеж в ЮKassa
         idempotence_key = str(uuid.uuid4())
         payment = YooPayment.create({
@@ -619,7 +646,7 @@ async def create_payment(request: Request):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"http://{request.base_url.hostname}/kursach/front/bookings.php"
+                "return_url": f"{frontend_base}/front/bookings.php"
             },
             "capture": True,
             "description": f"Оплата бронирования №{booking_id}",
