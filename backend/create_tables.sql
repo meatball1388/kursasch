@@ -122,6 +122,7 @@ CREATE TABLE public.payments (
     amount numeric(10,2) NOT NULL,
     status character varying(50) DEFAULT 'PENDING'::character varying,
     payment_method character varying(50),
+    external_id character varying(100),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 

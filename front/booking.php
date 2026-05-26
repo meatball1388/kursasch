@@ -183,7 +183,7 @@ if (session_status() === PHP_SESSION_NONE) {
             // Загружаем реальное фото объекта
             const resourceId = urlParams.get('id');
             if (resourceId) {
-                $.getJSON('http://' + window.location.hostname + ':8000/resources/' + resourceId, function(data) {
+                $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/resources/' + resourceId, function(data) {
                     if (data.image_url) {
                         $('#propertyImage').attr('src', data.image_url);
                     }
@@ -305,7 +305,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
                 // 1. Получаем список пользователей, чтобы найти свой user_id
                 $.ajax({
-                    url: 'http://' + window.location.hostname + ':8000/admin_api',
+                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ action: 'get_all', table: 'users' }),
@@ -320,7 +320,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         
                         // 2. Создаем бронирование
                         $.ajax({
-                            url: 'http://' + window.location.hostname + ':8000/bookings',
+                            url: 'http://' + (window.location.hostname || 'localhost') + ':8000/bookings',
                             method: 'POST',
                             contentType: 'application/json',
                             data: JSON.stringify(bookingData),
@@ -328,7 +328,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 if (response.success || response.id) {
                                     // 3. Создаем фейковый платеж
                                     $.ajax({
-                                        url: 'http://' + window.location.hostname + ':8000/payments/create',
+                                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/create',
                                         method: 'POST',
                                         contentType: 'application/json',
                                         data: JSON.stringify({
@@ -339,6 +339,9 @@ if (session_status() === PHP_SESSION_NONE) {
                                             submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
                                             if (payRes.confirmation_url) {
                                                 window.location.href = payRes.confirmation_url;
+                                            } else if (payRes.error) {
+                                                alert('Ошибка ЮKassa: ' + payRes.error);
+                                                window.location.href = 'bookings.php';
                                             } else {
                                                 window.location.href = 'bookings.php';
                                             }

@@ -138,7 +138,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
             // Подтягиваем свежие image_url из API
             const promises = favs.map(fav =>
-                $.getJSON('http://' + window.location.hostname + ':8000/resources/' + fav.id)
+                $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/resources/' + fav.id)
                   .then(fresh => ({ ...fav, image_url: fresh.image_url || fav.image_url }))
                   .catch(() => fav)
             );

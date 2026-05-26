@@ -89,7 +89,7 @@ if (session_status() === PHP_SESSION_NONE) {
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Вход...');
             
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/login',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/login',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({

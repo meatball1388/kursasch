@@ -3,7 +3,7 @@
     <ul class="list-unstyled">
         <li>
             <div class="form-group">
-                <input type="checkbox" name="property[]" id="ch1" value="appartment">
+                <input type="checkbox" name="property[]" id="ch1" value="apartment">
                 <label for="ch1">Квартира</label>
             </div>
         </li>
@@ -31,12 +31,12 @@
 
     <div class="price-inputs mb-3">
         <div class="input-field">
-            <input type="text" id="minPrice" value="0" min="0">
+            <input type="text" id="minPrice" name="minPrice" value="0" min="0">
             <span class="currency">₽</span>
         </div>
         <span class="separator">—</span>
         <div class="input-field">
-            <input type="number" id="maxPrice" value="50000" min="0">
+            <input type="number" id="maxPrice" name="maxPrice" value="50000" min="0">
             <span class="currency">₽</span>
             <span class="plus">+</span>
         </div>

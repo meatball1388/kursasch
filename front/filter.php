@@ -40,7 +40,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 if (!empty($checkout))
                     $filters[] = "Отъезд: " . $checkout;
                 if (!empty($propertyTypes)) {
-                    $typeNames = ['appartment' => 'Квартира', 'dacha' => 'Дача', 'room' => 'Комната', 'cottedzh' => 'Коттедж'];
+                    $typeNames = ['apartment' => 'Квартира', 'dacha' => 'Дача', 'room' => 'Комната', 'cottedzh' => 'Коттедж'];
                     $types = array_map(function ($t) use ($typeNames) {
                         return $typeNames[$t] ?? $t;
                     }, $propertyTypes);
@@ -85,7 +85,7 @@ if (session_status() === PHP_SESSION_NONE) {
             var maxPriceFilter = <?php echo intval($maxPrice); ?>;
 
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/search',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/search',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(searchParams),
@@ -108,10 +108,9 @@ if (session_status() === PHP_SESSION_NONE) {
                         return;
                     }
                     
-                    if (typeof renderPropertyCards === 'function') {
-                        renderPropertyCards(filtered, '#searchResults');
+                    if (typeof window.renderPropertyCards === 'function') {
+                        window.renderPropertyCards(filtered, '#searchResults');
                     } else {
-                        // Fallback if main.js is not fully loaded or function is missing
                         console.error('renderPropertyCards is not defined');
                     }
                 },

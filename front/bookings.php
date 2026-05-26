@@ -95,10 +95,9 @@ session_start();
         }
 
         function buildCard(b, active) {
-            const r = b.resource;
-            const name = r ? r.name : `Объект #${b.resource_id}`;
-            const address = r ? (r.address || r.location || '') : '';
-            const img = r && r.image_url ? r.image_url : '../img/property/metro-plus.png';
+            const name = b.resource_name || `Объект #${b.resource_id}`;
+            const address = b.address || b.location || '';
+            const img = b.image_url || '../img/property/metro-plus.png';
             const dateFrom = b.start_time ? b.start_time.split('T')[0] : '—';
             const dateTo   = b.end_time   ? b.end_time.split('T')[0]   : '—';
             const price = Number(b.price).toLocaleString('ru-RU');
@@ -148,7 +147,7 @@ session_start();
             const userEmail = "<?php echo isset($_SESSION['user']) ? $_SESSION['user']['email'] : ''; ?>";
             
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/admin_api',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ action: 'get_all', table: 'bookings' }),
@@ -181,7 +180,7 @@ session_start();
             if (!confirm('Вы уверены, что хотите отменить это бронирование?')) return;
             const id = $(this).data('id');
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/admin_api',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ action: 'update', table: 'bookings', id: id, fields: { status: 'CANCELLED' } }),
@@ -201,7 +200,7 @@ session_start();
             const amount = $(this).data('amount');
             
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/payments/create',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/create',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -211,6 +210,8 @@ session_start();
                 success: function(payRes) {
                     if (payRes.confirmation_url) {
                         window.location.href = payRes.confirmation_url;
+                    } else if (payRes.error) {
+                        alert('Ошибка ЮKassa: ' + payRes.error);
                     } else {
                         alert('Ошибка инициализации платежа');
                     }

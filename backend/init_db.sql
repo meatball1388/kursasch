@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     amount         NUMERIC(10,2) NOT NULL,
     status         VARCHAR(50) DEFAULT 'PENDING',
     payment_method VARCHAR(50),
+    external_id    VARCHAR(100),
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

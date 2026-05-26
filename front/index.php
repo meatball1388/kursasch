@@ -219,7 +219,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <script>
         $(document).ready(function () {
             // ========== ИИ-РЕКОМЕНДАЦИИ ==========
-            var API = 'http://' + window.location.hostname + ':8000';
+            var API = 'http://' + (window.location.hostname || 'localhost') + ':8000';
 
             // Проверяем статус модели
             function checkAiStatus() {

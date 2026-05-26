@@ -186,7 +186,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 // return false;
 
                 $.ajax({
-                    url: 'http://' + window.location.hostname + ':8000/register',
+                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/register',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(data),
@@ -195,7 +195,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         if (response.message === 'ok') {
                             // Автоматически входим после регистрации
                             $.ajax({
-                                url: 'http://' + window.location.hostname + ':8000/login',
+                                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/login',
                                 method: 'POST',
                                 contentType: 'application/json',
                                 data: JSON.stringify({

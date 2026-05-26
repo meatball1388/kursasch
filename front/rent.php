@@ -264,7 +264,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 };
 
                 $.ajax({
-                    url: 'http://' + window.location.hostname + ':8000/resources',
+                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/resources',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(apiData),

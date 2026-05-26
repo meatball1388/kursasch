@@ -102,7 +102,7 @@ $(function() {
         // Имитируем задержку банковской транзакции
         setTimeout(function() {
             $.ajax({
-                url: 'http://' + window.location.hostname + ':8000/payments/confirm',
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/confirm',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ payment_id: paymentId }),

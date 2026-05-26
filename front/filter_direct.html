@@ -12,7 +12,7 @@
     <h2>Результаты прямого запроса к бэкенду</h2>
     <div id="output"></div>
     <script>
-        fetch('http://' + window.location.hostname + ':8000/search', {
+        fetch('http://' + (window.location.hostname || 'localhost') + ':8000/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ location: 'Москва' })

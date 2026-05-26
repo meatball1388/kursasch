@@ -1,9 +1,12 @@
 $(document).ready(function () {
 
+    const backendHost = window.location.hostname || 'localhost';
+    const API_URL = 'http://' + backendHost + ':8000';
+
     // ========== 1. ЗАГРУЗКА ГОРОДОВ ИЗ BACKEND ==========
     function loadCities() {
         $.ajax({
-            url: 'http://' + window.location.hostname + ':8000/cities',
+            url: API_URL + '/cities',
             method: 'GET',
             dataType: 'json',
             success: function (data) {
@@ -201,7 +204,60 @@ $(document).ready(function () {
     });
 
     // ========== 6. ИЗБРАННОЕ ==========
-    // ... (unchanged)
+    $(document).on('click', '.btn-favorite', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $btn = $(this);
+        var itemData = $btn.data('item');
+        var item = null;
+
+        if (itemData) {
+            try {
+                item = typeof itemData === 'string' ? JSON.parse(itemData) : itemData;
+            } catch (ex) { }
+        }
+
+        if (!item) {
+            var $card = $btn.closest('[data-id]');
+            item = {
+                id: parseInt($card.data('id')),
+                name: $card.find('.card-title').text(),
+                base_price: $card.data('price'),
+                type: $card.data('type'),
+                image_url: $card.find('img').attr('src')
+            };
+        }
+
+        if (!item || !item.id) return;
+
+        var favs = getFavorites();
+        var existingIndex = favs.findIndex(function (f) { return String(f.id) === String(item.id); });
+
+        if (existingIndex >= 0) {
+            favs.splice(existingIndex, 1);
+            $btn.find('i').removeClass('bi-heart-fill text-danger').addClass('bi-heart');
+            $btn.attr('title', 'Добавить в избранное');
+        } else {
+            favs.push(item);
+            $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
+            $btn.attr('title', 'В избранном');
+        }
+        saveFavorites(favs);
+    });
+
+    // ========== 6. ПОКАЗАТЬ ТЕЛЕФОН ==========
+    $(document).on('click', '.btn-show-phone', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $btn = $(this);
+        if ($btn.data('phone-visible') === true) {
+            $btn.html('<i class="bi bi-telephone me-1"></i>Показать телефон').removeClass('btn-success').addClass('btn-outline-primary');
+            $btn.data('phone-visible', false);
+        } else {
+            $btn.html('<i class="bi bi-telephone me-1"></i>+7 (495) 123-45-67').removeClass('btn-outline-primary').addClass('btn-success');
+            $btn.data('phone-visible', true);
+        }
+    });
 
     // ========== 7. БРОНИРОВАНИЕ ==========
     $(document).on('click', '.btn-book', function (e) {
@@ -226,24 +282,25 @@ $(document).ready(function () {
         window.location.href = url;
     });
 
-    // ========== 8. ФИЛЬТРАЦИЯ НА СТРАНИЦЕ filter.php ==========
+    // ========== 8. ФИЛЬТРАЦИЯ ==========
     function filterProperties() {
-        var minPrice = 0, maxPrice = 50000;
-        if ($("#slider-range").length) {
-            minPrice = $("#slider-range").slider("values", 0);
-            maxPrice = $("#slider-range").slider("values", 1);
-        }
+        var minPrice = parseInt($("#minPrice").val()) || 0;
+        var maxPrice = parseInt($("#maxPrice").val()) || 50000;
+        
         var selectedTypes = [];
         $('input[name="property[]"]:checked').each(function () {
             selectedTypes.push($(this).val());
         });
+
         var visibleCount = 0;
         $('.property-item').each(function () {
             var $item = $(this);
             var price = parseInt($item.data('price')) || 0;
             var type = $item.data('type');
+            
             var priceMatch = (price >= minPrice && price <= maxPrice);
             var typeMatch = (selectedTypes.length === 0 || selectedTypes.indexOf(type) !== -1);
+            
             if (priceMatch && typeMatch) {
                 $item.show();
                 visibleCount++;
@@ -255,14 +312,39 @@ $(document).ready(function () {
     }
 
     $('#filterForm').on('submit', function (e) {
-        e.preventDefault();
-        filterProperties();
+        // Если мы НЕ на странице filter.php (например, на главной), 
+        // делаем фильтрацию на лету.
+        if (window.location.pathname.indexOf('filter.php') === -1) {
+            e.preventDefault();
+            filterProperties();
+        }
+        // Иначе (на filter.php) даем форме отправиться на сервер (стандартный GET)
     });
 
     // ========== 9. ПОИСК НА ГЛАВНОЙ ==========
-    $('#searchForm').on('submit', function () {
-        $('<input>').attr({ type: 'hidden', name: 'adults', value: window.adults }).appendTo(this);
-        $('<input>').attr({ type: 'hidden', name: 'children', value: window.children }).appendTo(this);
+    $('#searchForm').on('submit', function (e) {
+        e.preventDefault();
+        var city = $('#citySelector').val() || '';
+        var checkin = $('#checkinDate').val() || '';
+        var checkout = $('#checkoutDate').val() || '';
+        var adults = window.adults || 2;
+        var children = window.children || 0;
+
+        var url = 'filter.php?city=' + encodeURIComponent(city) +
+                  '&checkin=' + encodeURIComponent(checkin) +
+                  '&checkout=' + encodeURIComponent(checkout) +
+                  '&adults=' + adults +
+                  '&children=' + children;
+        
+        window.location.href = url;
+    });
+
+    // Фильтр городов в выпадающем списке
+    $('#citySearch').on('keyup', function() {
+        var value = $(this).val().toLowerCase();
+        $("#cityList li").filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+        });
     });
 
     // ========== 10. ЗАГРУЗКА ОБЪЕКТОВ НА ГЛАВНОЙ ==========
@@ -271,7 +353,7 @@ $(document).ready(function () {
         $('#noResults').addClass('d-none');
 
         $.ajax({
-            url: 'http://' + window.location.hostname + ':8000/search',
+            url: API_URL + '/search',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({}),
@@ -281,7 +363,7 @@ $(document).ready(function () {
                     $('#noResults').removeClass('d-none');
                     return;
                 }
-                renderPropertyCards(response.results, '#searchResults');
+                window.renderPropertyCards(response.results, '#searchResults');
             },
             error: function (xhr) {
                 $('#loadingSpinner').hide();
@@ -290,12 +372,12 @@ $(document).ready(function () {
         });
     }
 
-    function renderPropertyCards(items, containerId) {
+    window.renderPropertyCards = function(items, containerId) {
         var $container = $(containerId);
         $container.empty();
 
         var typeNames = {
-            'appartment': 'Квартира',
+            'apartment': 'Квартира',
             'dacha': 'Дача',
             'room': 'Комната',
             'cottedzh': 'Коттедж'
@@ -311,7 +393,11 @@ $(document).ready(function () {
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
             var imgUrl = item.image_url || '../img/property/metro-plus.png';
-            console.log('Loading image for ID ' + item.id + ': ' + imgUrl);
+            
+            // Если путь начинается с ../img, мы на filter.php, путь верный.
+            // Если мы в подпапке, возможно нужно корректировать. 
+            // Но в данном проекте структура плоская в htdocs/kursach/front/
+            
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
             var reviewCount = item.review_count || 0;
