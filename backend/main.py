@@ -378,7 +378,14 @@ async def create_booking(request: Request):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        error_msg = str(e)
+        # Если это ошибка requests (через которую работает SDK), попробуем вытащить детали
+        try:
+            if hasattr(e, 'response') and e.response is not None:
+                error_msg += f" | Details: {e.response.text}"
+        except:
+            pass
+        return {"error": error_msg}
 
 
 # ==============================================================
@@ -461,7 +468,14 @@ async def admin_api(request: Request):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        error_msg = str(e)
+        # Если это ошибка requests (через которую работает SDK), попробуем вытащить детали
+        try:
+            if hasattr(e, 'response') and e.response is not None:
+                error_msg += f" | Details: {e.response.text}"
+        except:
+            pass
+        return {"error": error_msg}
 
 
 
@@ -632,7 +646,14 @@ async def create_payment(request: Request):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {"error": str(e)}
+        error_msg = str(e)
+        # Если это ошибка requests (через которую работает SDK), попробуем вытащить детали
+        try:
+            if hasattr(e, 'response') and e.response is not None:
+                error_msg += f" | Details: {e.response.text}"
+        except:
+            pass
+        return {"error": error_msg}
 
 
 @app.post("/payments/webhook")
