@@ -296,6 +296,7 @@ async def check_login(request: Request):
             if bcrypt.checkpw(data["password"].encode("utf8"), stored_hash.encode("utf8")):
                 return {
                     "success": "true",
+                    "id": result[0]["id"],
                     "redirect": "index.php",
                     "message": "вход успешен",
                     "id": result[0]["id"],
@@ -360,15 +361,28 @@ async def create_booking(request: Request):
         user_id = int(data.get("user_id", 1))
 
         async with pool.acquire() as con:
-            # Проверяем доступность
+            # Проверяем доступность. Конфликтуем только с оплаченными, подтвержденными 
+            # или свежими (созданными < 30 мин назад) бронированиями других пользователей.
+            # Бронирования со статусом CANCELLED или COMPLETED игнорируем.
             conflict = await con.fetchrow(
-                """SELECT id FROM bookings
-                   WHERE resource_id = $1 AND status != 'CANCELLED'
-                   AND NOT (end_time <= $2 OR start_time >= $3)""",
+                """SELECT id, status, user_id FROM bookings
+                   WHERE resource_id = $1 
+                   AND status NOT IN ('CANCELLED', 'COMPLETED')
+                   AND (
+                       status != 'CREATED' 
+                       OR created_at > NOW() - INTERVAL '30 minutes'
+                   )
+                   AND NOT (end_time <= $2 OR start_time >= $3)
+                   LIMIT 1""",
                 resource_id, start_time, end_time
             )
+            
             if conflict:
-                return {"error": "Объект уже забронирован на эти даты", "success": False}
+                # Если конфликт с собственным CREATED бронированием — разрешаем "перезаписать" (просто создаем новое)
+                if conflict["status"] == "CREATED" and conflict["user_id"] == user_id:
+                    print(f"DEBUG: Found own old CREATED booking {conflict['id']}, allowing new one.")
+                else:
+                    return {"error": "Объект уже забронирован на эти даты", "success": False}
 
             result = await con.fetchrow(
                 """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price)

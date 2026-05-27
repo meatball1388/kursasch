@@ -170,103 +170,71 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="main.js"></script>
     <script>
         $(document).ready(function () {
-            // Получаем параметры из URL
             const urlParams = new URLSearchParams(window.location.search);
             const propertyName = decodeURIComponent(urlParams.get('name') || '');
             const propertyPrice = parseFloat(urlParams.get('price')) || 2500;
-            const propertyLocation = decodeURIComponent(urlParams.get('location') || 'Москва, ул. Тверская, д. 15');
+            const propertyLocation = decodeURIComponent(urlParams.get('location') || '');
 
             if (propertyName) $('#propertyTitle').text(propertyName);
             $('#propertyLocation').text(propertyLocation);
             $('#pricePerNight').text(propertyPrice.toLocaleString('ru-RU') + ' ₽');
 
-            // Загружаем реальное фото объекта
             const resourceId = urlParams.get('id');
             if (resourceId) {
                 $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/resources/' + resourceId, function(data) {
-                    if (data.image_url) {
-                        $('#propertyImage').attr('src', data.image_url);
-                    }
+                    if (data.image_url) $('#propertyImage').attr('src', data.image_url);
                 });
             }
 
             function formatDate(date) {
-                let d = date.getDate(),
-                    m = date.getMonth() + 1,
-                    y = date.getFullYear();
+                let d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
                 return `${d < 10 ? '0' + d : d}.${m < 10 ? '0' + m : m}.${y}`;
             }
 
-            // Синхронизация дат из URL
-            let checkinStr = urlParams.get('checkin');
-            let checkoutStr = urlParams.get('checkout');
-            let adults = urlParams.get('adults');
-            let children = urlParams.get('children');
-
-            if (adults) {
-                $('#adultsCount').val(adults);
-                window.adults = parseInt(adults);
-            }
-            if (children) {
-                $('#childrenCount').val(children);
-                window.children = parseInt(children);
-            }
-
+            let checkinStr = urlParams.get('checkin'), checkoutStr = urlParams.get('checkout');
             let today = new Date();
             let checkinDate = today;
             if (checkinStr) {
-                let parts = checkinStr.split('.');
-                if (parts.length === 3) checkinDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                let p = checkinStr.split('.');
+                if (p.length === 3) checkinDate = new Date(p[2], p[1] - 1, p[0]);
             }
             if (checkinDate < today) checkinDate = today;
 
             let tomorrow = new Date(checkinDate);
-            tomorrow.setDate(checkinDate.getDate() + 2); // Минимум 2 ночи
-            
+            tomorrow.setDate(checkinDate.getDate() + 2);
             let checkoutDate = tomorrow;
             if (checkoutStr) {
-                let parts = checkoutStr.split('.');
-                if (parts.length === 3) {
-                    let potentialCheckout = new Date(parts[2], parts[1] - 1, parts[0]);
-                    if (potentialCheckout >= tomorrow) checkoutDate = potentialCheckout;
+                let p = checkoutStr.split('.');
+                if (p.length === 3) {
+                    let pot = new Date(p[2], p[1] - 1, p[0]);
+                    if (pot >= tomorrow) checkoutDate = pot;
                 }
             }
 
             $('#checkinDate').val(formatDate(checkinDate)).datepicker({
-                dateFormat: "dd.mm.yy",
-                minDate: 0,
+                dateFormat: "dd.mm.yy", minDate: 0,
                 onSelect: function (selected) {
                     let min = $.datepicker.parseDate('dd.mm.yy', selected);
                     min.setDate(min.getDate() + 2);
                     $('#checkoutDate').datepicker('option', 'minDate', min);
-                    let currentCheckout = $('#checkoutDate').datepicker('getDate');
-                    if (!currentCheckout || currentCheckout < min) {
-                        $('#checkoutDate').val(formatDate(min));
-                    }
                     calculatePrice();
                 }
             });
 
             $('#checkoutDate').val(formatDate(checkoutDate)).datepicker({
-                dateFormat: "dd.mm.yy",
-                minDate: 2,
+                dateFormat: "dd.mm.yy", minDate: 2,
                 onSelect: calculatePrice
             });
-            // Обновим minDate для checkout на основе начального checkin
-            let initialMinCheckout = new Date(checkinDate);
-            initialMinCheckout.setDate(checkinDate.getDate() + 2);
-            $('#checkoutDate').datepicker('option', 'minDate', initialMinCheckout);
 
             let currentTotal = 0;
             function calculatePrice() {
-                let checkin = $('#checkinDate').datepicker('getDate'),
-                    checkout = $('#checkoutDate').datepicker('getDate');
-                if (checkin && checkout) {
-                    let nights = Math.ceil((checkout - checkin) / (1000 * 60 * 60 * 24));
+                let ci = $('#checkinDate').datepicker('getDate'), co = $('#checkoutDate').datepicker('getDate');
+                if (ci && co) {
+                    let nights = Math.ceil((co - ci) / (86400000));
                     $('#nightsCount').text(nights);
-                    let subtotal = nights * propertyPrice;
-                    currentTotal = subtotal + 1000 + 750;
-                    $('#subtotal').text(subtotal.toLocaleString('ru-RU') + ' ₽');
+                    let sub = nights * propertyPrice;
+                    currentTotal = sub + 1000 + 750;
+                    $('#subtotal').text(sub.toLocaleString('ru-RU') + ' ₽');
                     $('#totalPrice').text(currentTotal.toLocaleString('ru-RU') + ' ₽');
                 }
             }
@@ -274,7 +242,14 @@ if (session_status() === PHP_SESSION_NONE) {
 
             $('#bookingForm').on('submit', function (e) {
                 e.preventDefault();
-                
+                const sessionUserId = <?php echo $_SESSION['user']['id'] ?? 0; ?>;
+
+                if (!sessionUserId) {
+                    alert('Пожалуйста, войдите в аккаунт');
+                    window.location.href = 'login.php';
+                    return;
+                }
+
                 let submitBtn = $(this).find('button[type="submit"]');
                 submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Обработка...');
 
@@ -293,19 +268,13 @@ if (session_status() === PHP_SESSION_NONE) {
                     passport: $('#guestPassport').val(),
                     comments: $('#guestComments').val(),
                     total: currentTotal,
-                    resource_id: urlParams.get('id') || 1 // Передаем ID ресурса
+                    resource_id: resourceId || 1,
+                    user_id: sessionUserId,
+                    start_time: $('#checkinDate').val(),
+                    end_time: $('#checkoutDate').val(),
+                    price: currentTotal
                 };
 
-                const userSessionId = "<?php echo isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : ''; ?>";
-                if (!userSessionId) {
-                    alert('Пожалуйста, войдите в аккаунт');
-                    window.location.href = 'login.php';
-                    return;
-                }
-                
-                bookingData.user_id = parseInt(userSessionId);
-                
-                // 2. Создаем бронирование
                 $.ajax({
                     url: 'http://' + (window.location.hostname || 'localhost') + ':8000/bookings',
                     method: 'POST',
@@ -313,14 +282,13 @@ if (session_status() === PHP_SESSION_NONE) {
                     data: JSON.stringify(bookingData),
                     success: function(response) {
                         if (response.success || response.id) {
-                            // 3. Создаем платеж
                             $.ajax({
                                 url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/create',
                                 method: 'POST',
                                 contentType: 'application/json',
                                 data: JSON.stringify({
                                     booking_id: response.id,
-                                    amount: bookingData.total
+                                    amount: currentTotal
                                 }),
                                 success: function(payRes) {
                                     submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
@@ -351,7 +319,14 @@ if (session_status() === PHP_SESSION_NONE) {
                 });
             });
         });
+
+        window.changeGuests = function(type, delta) {
+            let input = $(type === 'adults' ? '#adultsCount' : '#childrenCount');
+            let val = parseInt(input.val()) + delta;
+            if (val < (type === 'adults' ? 1 : 0)) val = (type === 'adults' ? 1 : 0);
+            if (val > 10) val = 10;
+            input.val(val);
+        };
     </script>
 </body>
-
 </html>

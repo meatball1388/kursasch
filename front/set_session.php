@@ -19,10 +19,7 @@ if ($data && isset($data['email'])) {
         'login_time' => time()
     ];
     // echo json_encode($_SESSION);
-    http_response_code(200);
     echo json_encode(['success' => true]);
-    exit;
 } else {
-    http_response_code(400);
-    echo json_encode(['success' => false]);
+    echo json_encode(['success' => false, 'message' => 'Invalid data']);
 }
