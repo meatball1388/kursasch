@@ -319,7 +319,7 @@ function renderPage(item, reviews) {
     $('#heroTitle').text(item.name);
     $('#heroAddress').text(item.address || item.location || 'Адрес не указан');
     $('#heroBreadcrumb').text(item.name);
-    const typeNames = {appartment:'Квартира',apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж'};
+    const typeNames = {apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж',house:'Дом'};
     const typeName = typeNames[item.type] || 'Недвижимость';
     $('#heroBadges').html(`
         <span class="hero-badge"><i class="bi bi-tag-fill"></i>${esc(typeName)}</span>

@@ -82,7 +82,7 @@
                 </div>
                 <hr>
                 <h6 class="mb-3">Или оставьте сообщение:</h6>
-                <form action="#" method="POST">
+                <form id="supportForm">
                     <div class="row g-2 mb-2">
                         <div class="col-6"><label for="supportName" class="form-label small">Ваше имя</label><input
                                 type="text" class="form-control form-control-sm" id="supportName" name="name"
@@ -112,6 +112,24 @@
                         обращение</button>
                     <p class="small text-muted text-center mt-2 mb-0">Мы ответим вам в течение 24 часов</p>
                 </form>
+                <script>
+                document.getElementById('supportForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const btn = this.querySelector('button[type="submit"]');
+                    const originalHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
+                    
+                    setTimeout(() => {
+                        alert('Ваше обращение №' + Math.floor(Math.random() * 10000) + ' принято! Мы свяжемся с вами в ближайшее время.');
+                        this.reset();
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('supportModal'));
+                        if (modal) modal.hide();
+                    }, 1000);
+                });
+                </script>
             </div>
         </div>
     </div>

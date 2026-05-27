@@ -104,7 +104,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
             <input class="form-control" id="searchResources" placeholder="🔍 Поиск по названию..." style="max-width:260px;">
             <select class="form-select" id="filterType" style="width:auto;">
               <option value="">Все типы</option>
-              <option value="appartment">Квартира</option>
+              <option value="apartment">Квартира</option>
               <option value="dacha">Дача</option>
               <option value="room">Комната</option>
               <option value="cottedzh">Коттедж</option>
@@ -156,7 +156,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
               <div class="col-md-4">
                 <label class="form-label fw-semibold small">Тип</label>
                 <select class="form-select" id="rType">
-                  <option value="appartment">Квартира</option>
+                  <option value="apartment">Квартира</option>
                   <option value="dacha">Дача</option>
                   <option value="room">Комната</option>
                   <option value="cottedzh">Коттедж</option>
@@ -219,7 +219,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
 const API = 'http://' + (window.location.hostname || 'localhost') + ':8000';
 let cache = {users:[],resources:[],bookings:[]};
 let currentTable = 'users', currentEditId = null;
-const typeNames = {appartment:'Квартира',apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж'};
+const typeNames = {apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж',house:'Дом'};
 const statusColors = {CREATED:'warning',CONFIRMED:'success',PAID:'primary',CANCELLED:'secondary'};
 
 // === STATS ===

@@ -65,7 +65,7 @@ if (session_status() === PHP_SESSION_NONE) {
             const img = item.image_url || '../img/property/metro-plus.png';
             const onerr = "this.src='../img/property/metro-plus.png'";
             const price = Number(item.base_price).toLocaleString('ru-RU');
-            const typeNames = { 'appartment': 'Квартира', 'dacha': 'Дача', 'room': 'Комната', 'cottedzh': 'Коттедж' };
+            const typeNames = { 'apartment': 'Квартира', 'dacha': 'Дача', 'room': 'Комната', 'cottedzh': 'Коттедж' };
             const typeName = typeNames[item.type] || 'Недвижимость';
 
             if (!gridMode) {

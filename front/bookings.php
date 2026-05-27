@@ -144,8 +144,11 @@ session_start();
         }
 
         function loadBookings() {
-            const userEmail = "<?php echo isset($_SESSION['user']) ? $_SESSION['user']['email'] : ''; ?>";
-            const userId = "<?php echo isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : '1'; ?>";
+            const userId = "<?php echo isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : ''; ?>";
+            if (!userId) {
+                $('#currentBookings').html('<div class="alert alert-warning">Пожалуйста, войдите в аккаунт</div>');
+                return;
+            }
             
             $.ajax({
                 url: 'http://' + (window.location.hostname || 'localhost') + ':8000/my-bookings?user_id=' + userId,
@@ -153,8 +156,8 @@ session_start();
                 success: function(res) {
                     const myBookings = res.bookings || [];
                     
-                    const active   = myBookings.filter(b => b.status !== 'CANCELLED' && b.status !== 'COMPLETED');
-                    const inactive = myBookings.filter(b => b.status === 'CANCELLED' || b.status === 'COMPLETED');
+                    const active   = myBookings.filter(b => ['CREATED', 'CONFIRMED', 'PAID', 'SUCCESS'].includes(b.status));
+                    const inactive = myBookings.filter(b => ['CANCELLED', 'COMPLETED', 'EXPIRED'].includes(b.status));
 
                     if (active.length === 0) {
                         $('#currentBookings').html('<div class="text-center py-5"><i class="bi bi-calendar-x fs-1 text-muted d-block mb-3"></i><p class="text-muted">У вас нет активных бронирований</p><a href="index.php" class="btn btn-danger mt-2">Найти жильё</a></div>');

@@ -145,10 +145,10 @@ if (session_status() === PHP_SESSION_NONE) {
                             <div class="mb-4">
                                 <div class="form-check"><input class="form-check-input" type="checkbox" id="rulesAgree"
                                         required><label class="form-check-label" for="rulesAgree">Я согласен с <a
-                                            href="#">правилами бронирования</a></label></div>
+                                            href="javascript:void(0)" onclick="alert('Правила бронирования: \n1. Оплата производится сразу. \n2. Бесплатная отмена за 24 часа. \n3. Соблюдайте тишину.')">правилами бронирования</a></label></div>
                                 <div class="form-check"><input class="form-check-input" type="checkbox"
                                         id="personalDataAgree" required><label class="form-check-label"
-                                        for="personalDataAgree">Я согласен на обработку <a href="#">персональных
+                                        for="personalDataAgree">Я согласен на обработку <a href="javascript:void(0)" onclick="alert('Мы обрабатываем ваши данные только для оформления бронирования и не передаем их третьим лицам.')">персональных
                                             данных</a></label></div>
                             </div>
                             <div class="d-grid gap-2">
@@ -296,76 +296,57 @@ if (session_status() === PHP_SESSION_NONE) {
                     resource_id: urlParams.get('id') || 1 // Передаем ID ресурса
                 };
 
-                const userEmail = "<?php echo isset($_SESSION['user']) ? $_SESSION['user']['email'] : ''; ?>";
-                if (!userEmail) {
+                const userSessionId = "<?php echo isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : ''; ?>";
+                if (!userSessionId) {
                     alert('Пожалуйста, войдите в аккаунт');
                     window.location.href = 'login.php';
                     return;
                 }
-
-                // 1. Получаем список пользователей, чтобы найти свой user_id
+                
+                bookingData.user_id = parseInt(userSessionId);
+                
+                // 2. Создаем бронирование
                 $.ajax({
-                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
+                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/bookings',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ action: 'get_all', table: 'users' }),
-                    success: function(res) {
-                        let userId = 1; // default
-                        if (res.results) {
-                            let user = res.results.find(u => u.email === userEmail);
-                            if (user) userId = user.id;
-                        }
-                        
-                        bookingData.user_id = userId;
-                        
-                        // 2. Создаем бронирование
-                        $.ajax({
-                            url: 'http://' + (window.location.hostname || 'localhost') + ':8000/bookings',
-                            method: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify(bookingData),
-                            success: function(response) {
-                                if (response.success || response.id) {
-                                    // 3. Создаем фейковый платеж
-                                    $.ajax({
-                                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/create',
-                                        method: 'POST',
-                                        contentType: 'application/json',
-                                        data: JSON.stringify({
-                                            booking_id: response.id,
-                                            amount: bookingData.total
-                                        }),
-                                        success: function(payRes) {
-                                            submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                                            if (payRes.confirmation_url) {
-                                                window.location.href = payRes.confirmation_url;
-                                            } else if (payRes.error) {
-                                                alert('Ошибка ЮKassa: ' + payRes.error);
-                                                window.location.href = 'bookings.php';
-                                            } else {
-                                                window.location.href = 'bookings.php';
-                                            }
-                                        },
-                                        error: function() {
-                                            submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                                            window.location.href = 'bookings.php';
-                                        }
-                                    });
-                                } else {
+                    data: JSON.stringify(bookingData),
+                    success: function(response) {
+                        if (response.success || response.id) {
+                            // 3. Создаем платеж
+                            $.ajax({
+                                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/payments/create',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({
+                                    booking_id: response.id,
+                                    amount: bookingData.total
+                                }),
+                                success: function(payRes) {
                                     submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                                    alert('Ошибка: ' + (response.error || 'Не удалось сохранить бронирование'));
+                                    if (payRes.confirmation_url) {
+                                        window.location.href = payRes.confirmation_url;
+                                    } else if (payRes.error) {
+                                        alert('Ошибка ЮKassa: ' + payRes.error);
+                                        window.location.href = 'bookings.php';
+                                    } else {
+                                        window.location.href = 'bookings.php';
+                                    }
+                                },
+                                error: function() {
+                                    submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
+                                    window.location.href = 'bookings.php';
                                 }
-                            },
-                            error: function(xhr) {
-                                submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                                alert('Произошла ошибка при отправке запроса на сервер.');
-                                console.error(xhr.responseText);
-                            }
-                        });
+                            });
+                        } else {
+                            submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
+                            alert('Ошибка: ' + (response.error || 'Не удалось сохранить бронирование'));
+                        }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                        alert('Ошибка получения данных пользователя');
+                        alert('Произошла ошибка при отправке запроса на сервер.');
+                        console.error(xhr.responseText);
                     }
                 });
             });

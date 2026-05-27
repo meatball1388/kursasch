@@ -1,7 +1,44 @@
-$(document).ready(function () {
+// ========== ГЛОБАЛЬНЫЕ ФУНКЦИИ И ПЕРЕМЕННЫЕ (доступны для onclick) ==========
+window.adults = 2;
+window.children = 0;
 
-    const backendHost = window.location.hostname || 'localhost';
-    const API_URL = 'http://' + backendHost + ':8000';
+window.changeGuests = function (type, delta) {
+    if (type === 'adults') {
+        window.adults = Math.max(1, Math.min(10, window.adults + delta));
+        updateGuestElement("#adultsCount", window.adults);
+    } else if (type === 'children') {
+        window.children = Math.max(0, Math.min(10, window.children + delta));
+        updateGuestElement("#childrenCount", window.children);
+    }
+    updateGuestsSummary();
+};
+
+function updateGuestElement(selector, value) {
+    var $el = $(selector);
+    if ($el.length === 0) return;
+    if ($el.is('input')) {
+        $el.val(value);
+    } else {
+        $el.text(value);
+    }
+}
+
+function updateGuestsSummary() {
+    var summary = window.adults + ' ' + (window.adults === 1 ? 'взрослый' : 'взрослых');
+    if (window.children > 0) {
+        summary += ', ' + window.children + ' ' + (window.children === 1 ? 'ребёнок' : 'детей');
+    } else {
+        summary += ' без детей';
+    }
+    var $sum = $("#guestsSummary");
+    if ($sum.length) $sum.text(summary);
+}
+
+// Переменная для API
+const backendHost = window.location.hostname || 'localhost';
+const API_URL = 'http://' + backendHost + ':8000';
+
+$(document).ready(function () {
 
     // ========== 1. ЗАГРУЗКА ГОРОДОВ ИЗ BACKEND ==========
     function loadCities() {
@@ -128,30 +165,18 @@ $(document).ready(function () {
         });
     }
 
-    // ========== 4. СЧЁТЧИК ГОСТЕЙ ==========
-    window.adults = 2;
-    window.children = 0;
-
-    window.changeGuests = function (type, delta) {
-        if (type === 'adults') {
-            window.adults = Math.max(1, Math.min(10, window.adults + delta));
-            $("#adultsCount").text(window.adults);
-        } else if (type === 'children') {
-            window.children = Math.max(0, Math.min(10, window.children + delta));
-            $("#childrenCount").text(window.children);
-        }
-        updateGuestsSummary();
+    // ========== 4. СЧЁТЧИК ГОСТЕЙ (Инициализация) ==========
+    // Синхронизируем из URL если есть
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('adults')) {
+        window.adults = parseInt(urlParams.get('adults'));
+        updateGuestElement("#adultsCount", window.adults);
     }
-
-    function updateGuestsSummary() {
-        var summary = window.adults + ' ' + (window.adults === 1 ? 'взрослый' : 'взрослых');
-        if (window.children > 0) {
-            summary += ', ' + window.children + ' ' + (window.children === 1 ? 'ребёнок' : 'детей');
-        } else {
-            summary += ' без детей';
-        }
-        $("#guestsSummary").text(summary);
+    if (urlParams.get('children')) {
+        window.children = parseInt(urlParams.get('children'));
+        updateGuestElement("#childrenCount", window.children);
     }
+    updateGuestsSummary();
 
     // ========== 5. ИЗБРАННОЕ (localStorage) ==========
     function getFavorites() {
@@ -321,6 +346,18 @@ $(document).ready(function () {
         // Иначе (на filter.php) даем форме отправиться на сервер (стандартный GET)
     });
 
+    $('#resetFilters').on('click', function () {
+        $('#filterForm')[0].reset();
+        $("#slider-range").slider("values", [0, 20000]);
+        $("#minPrice").val(0);
+        $("#maxPrice").val(20000);
+        if (window.location.pathname.indexOf('filter.php') === -1) {
+            filterProperties();
+        } else {
+            window.location.href = 'filter.php';
+        }
+    });
+
     // ========== 9. ПОИСК НА ГЛАВНОЙ ==========
     $('#searchForm').on('submit', function (e) {
         e.preventDefault();
@@ -380,7 +417,8 @@ $(document).ready(function () {
             'apartment': 'Квартира',
             'dacha': 'Дача',
             'room': 'Комната',
-            'cottedzh': 'Коттедж'
+            'cottedzh': 'Коттедж',
+            'house': 'Дом'
         };
 
         var favs = getFavorites();
@@ -393,10 +431,6 @@ $(document).ready(function () {
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
             var imgUrl = item.image_url || '../img/property/metro-plus.png';
-            
-            // Если путь начинается с ../img, мы на filter.php, путь верный.
-            // Если мы в подпапке, возможно нужно корректировать. 
-            // Но в данном проекте структура плоская в htdocs/kursach/front/
             
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
@@ -457,5 +491,3 @@ $(document).ready(function () {
         loadAllProperties();
     }
 });
-
-

@@ -12,7 +12,7 @@ OBJECTS = [
     {"id": 2, "filename": "house_forest.jpg", "label": "Dom Lesnaya Skazka", "color1": (104,211,145), "color2": (47,133,90)},
     {"id": 3, "filename": "room_arbat.jpg",   "label": "Komnata Arbat",       "color1": (246,173,85),  "color2": (221,107,32)},
     {"id": 4, "filename": "cottage_vip.jpg",  "label": "Kottedzh VIP",        "color1": (183,148,244), "color2": (128,90,213)},
-    {"id": 5, "filename": "studio_city.jpg",  "label": "Studiya City Center", "color1": (99,235,218),  "color2": (49,151,149)},
+    {"id": 5, "filename": "apartment_city.jpg",  "label": "Apartment City Center", "color1": (99,235,218),  "color2": (49,151,149)},
     {"id": 6, "filename": "dacha_lake.jpg",   "label": "Dacha u Ozera",       "color1": (144,205,244), "color2": (66,153,225)},
     {"id": 8, "filename": "apt_msk.jpg",      "label": "Kvartira Moskva",     "color1": (252,129,74),  "color2": (221,75,57)},
 ]

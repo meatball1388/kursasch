@@ -325,7 +325,7 @@ async def create_resource(request: Request):
                 """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id""",
                 data.get("name", "Без названия"),
-                data.get("type", "appartment"),
+                data.get("type", "apartment"),
                 data.get("description", ""),
                 float(data.get("base_price", 0)),
                 data.get("is_active", True),
@@ -589,10 +589,10 @@ async def my_bookings(request: Request, user_id: int):
         for pay in pending_payments:
             try:
                 print(f"DEBUG: Checking YooKassa status for payment {pay['id']} (ext_id: {pay['external_id']})")
-                payment_info = YooPayment.find_one(pay["external_id"])
+                payment_info = YooPayment.find(pay["external_id"])
                 print(f"DEBUG: YooKassa status for {pay['id']} is {payment_info.status}")
-                if payment_info.status == "succeeded":
-                    print(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID")
+                if payment_info.status in ["succeeded", "waiting_for_capture"]:
+                    print(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID (status: {payment_info.status})")
                     await con.execute("UPDATE payments SET status = 'SUCCESS' WHERE id = $1", pay["id"])
                     await con.execute("UPDATE bookings SET status = 'PAID' WHERE id = $1", pay["booking_id"])
             except Exception as e:

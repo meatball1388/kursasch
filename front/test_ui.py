@@ -623,7 +623,7 @@ class TestE2EFlows:
         server.con.fetch.return_value = []
         resp = api("/search", method="POST", json={
             "location": "Санкт-Петербург",
-            "type": "appartment",
+            "type": "apartment",
             "min_price": 2000,
             "max_price": 8000,
             "date_from": "2025-09-01",

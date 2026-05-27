@@ -392,7 +392,7 @@ class TestAIRouter:
 
     @pytest.mark.asyncio
     async def test_recommend_type_mapping(self, tmp_path):
-        """Тип 'apartment' должен маппироваться в 'appartment' в БД-запросе."""
+        """Тип 'apartment' должен маппироваться в 'apartment' в БД-запросе."""
         csv = str(tmp_path / "data.csv")
         _make_csv(csv)
         mp = tmp_path / "m.pkl"

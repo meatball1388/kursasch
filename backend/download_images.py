@@ -33,8 +33,8 @@ SOURCES = [
         "https://placeimg.com/800/500/arch",
     ]},
     # Объект 5 — студия
-    {"id": 5, "filename": "studio_city.jpg", "urls": [
-        "https://loremflickr.com/800/500/studio,apartment",
+    {"id": 5, "filename": "apartment_city.jpg", "urls": [
+        "https://loremflickr.com/800/500/apartment,city",
         "https://placeimg.com/800/500/arch",
     ]},
     # Объект 6 — дача у озера

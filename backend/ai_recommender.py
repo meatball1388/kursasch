@@ -14,7 +14,7 @@ ENCODERS_PATH = Path("encoders.pkl")
 DATA_PATH = Path("training_data.csv")
 
 CITIES = ["Москва", "Санкт-Петербург", "Казань", "Сочи", "Екатеринбург", "Новосибирск", "Краснодар", "Нижний Новгород"]
-PROPERTY_TYPES = ["apartment", "house", "studio", "room", "villa"]
+PROPERTY_TYPES = ["apartment", "house", "room", "villa"]
 AMENITIES_POOL = ["wifi", "parking", "kitchen", "pool", "gym", "ac", "balcony", "washer", "tv", "pets"]
 
 
@@ -95,6 +95,7 @@ def get_recommendations(
     check_out: str,
     guests: int,
     candidate_ids: list[int] = None,
+    candidates: list[dict] = None,
     top_n: int = 5,
 ) -> list[dict]:
     try:
@@ -103,27 +104,46 @@ def get_recommendations(
         type_enc: LabelEncoder = encoders["type"]
     except Exception:
         # Fallback if no model: return simple match scores
+        if candidates:
+            return [{"property_id": c["id"], "score": 0.5} for c in candidates[:top_n]]
         if not candidate_ids:
             return []
         return [{"property_id": pid, "score": 0.5} for pid in candidate_ids[:top_n]]
 
-    city = city if city in CITIES else CITIES[0]
-    property_type = property_type if property_type in PROPERTY_TYPES else PROPERTY_TYPES[0]
-
     # If no candidates provided, we can't recommend actual items
-    if not candidate_ids:
+    if not candidates and not candidate_ids:
         return []
+    
+    # If only candidate_ids provided, convert to simple dicts
+    if not candidates:
+        candidates = [{"id": pid} for pid in candidate_ids]
 
     results = []
-    for prop_id in candidate_ids:
-        # For simplicity in this kursach, we predict probability 
-        # that a user with THESE search params will like THIS prop_id.
-        # Note: In a real system, prop_id features should be used.
+    
+    # DB type to Model type mapping
+    db_to_model_type = {
+        "dacha": "house",
+        "cottedzh": "villa",
+        "apartment": "apartment",
+        "room": "room"
+    }
+
+    for cand in candidates:
+        prop_id = cand["id"]
+        
+        # Use candidate features if available, otherwise use query features
+        cand_type = db_to_model_type.get(cand.get("type"), property_type)
+        cand_city = cand.get("location", city)
+        
+        # Ensure they are within CITIES and PROPERTY_TYPES for encoder
+        cand_city = cand_city if cand_city in CITIES else CITIES[0]
+        cand_type = cand_type if cand_type in PROPERTY_TYPES else PROPERTY_TYPES[0]
+
         row = {
-            "city": city,
-            "property_type": property_type,
-            "min_price": min_price,
-            "max_price": max_price,
+            "city": cand_city,
+            "property_type": cand_type,
+            "min_price": cand.get("base_price", min_price),
+            "max_price": cand.get("base_price", max_price),
             "rooms": rooms,
             "guests": guests,
             "amenities": json.dumps(amenities, ensure_ascii=False),
@@ -133,17 +153,12 @@ def get_recommendations(
         df_row = pd.DataFrame([row])
         X = _build_features(df_row, city_enc, type_enc)
         
-        # We can't really predict per prop_id if the model wasn't trained with it as a feature
-        # But if it was, predict_proba might give something.
-        # However, the current training script uses ID as a feature? No, it doesn't.
-        # Wait, I should check _build_features again.
-        
         prob = clf.predict_proba(X)[0][1]
         
-        # Since X is same for all prop_ids, prob is same.
-        # Let's add some "pseudo-AI" logic to make it look like it's ranking.
-        # We'll add a small random factor or base it on ID to avoid "20% for all".
-        score = float(prob) + (hash(str(prop_id)) % 100) / 1000.0
+        # Add a small score boost if types match perfectly
+        type_match_bonus = 0.05 if cand_type == property_type else 0.0
+        
+        score = float(prob) + type_match_bonus + (hash(str(prop_id)) % 100) / 1000.0
         
         results.append({"property_id": prop_id, "score": round(score, 4)})
 

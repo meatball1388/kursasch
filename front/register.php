@@ -93,7 +93,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             <div class="form-check mb-4">
                                 <input class="form-check-input" type="checkbox" id="agreeRules" required>
                                 <label class="form-check-label" for="agreeRules">
-                                    Я согласен с <a href="#" target="_blank">правилами сервиса</a>
+                                    Я согласен с <a href="javascript:void(0)" onclick="alert('Правила сервиса: \n1. Будьте вежливы. \n2. Не указывайте ложные данные. \n3. Удачного отдыха!')">правилами сервиса</a>
                                 </label>
                             </div>
 
@@ -209,6 +209,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                             method: 'POST',
                                             contentType: 'application/json',
                                             data: JSON.stringify({
+                                                id: loginResp.id,
                                                 email: loginResp.email,
                                                 name: loginResp.name,
                                                 surname: loginResp.surname,

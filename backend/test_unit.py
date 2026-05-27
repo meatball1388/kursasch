@@ -121,7 +121,7 @@ class TestSearch:
     async def test_search_with_type_filter(self, client, con):
         con.fetch.return_value = []
         async with client:
-            await client.post("/search", json={"type": "appartment"})
+            await client.post("/search", json={"type": "apartment"})
         query = con.fetch.call_args[0][0]
         assert "type" in query
 

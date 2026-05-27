@@ -40,7 +40,13 @@ if (session_status() === PHP_SESSION_NONE) {
                 if (!empty($checkout))
                     $filters[] = "Отъезд: " . $checkout;
                 if (!empty($propertyTypes)) {
-                    $typeNames = ['apartment' => 'Квартира', 'dacha' => 'Дача', 'room' => 'Комната', 'cottedzh' => 'Коттедж'];
+                    $typeNames = [
+                        'apartment' => 'Квартира', 
+                        'dacha' => 'Дача', 
+                        'room' => 'Комната', 
+                        'cottedzh' => 'Коттедж',
+                        'house' => 'Дом'
+                    ];
                     $types = array_map(function ($t) use ($typeNames) {
                         return $typeNames[$t] ?? $t;
                     }, $propertyTypes);
