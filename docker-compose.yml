@@ -38,6 +38,8 @@ services:
       FRONTEND_URL: http://localhost/kursach
     volumes:
       - ./backend:/app
+      - ./front:/front
+      - ./img:/img
     ports:
       - "8000:8000"
     depends_on:

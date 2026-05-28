@@ -435,7 +435,9 @@ $(document).ready(function () {
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
             var reviewCount = item.review_count || 0;
-            var ratingDisplay = item.avg_rating > 0 ? parseFloat(item.avg_rating).toFixed(1) : '4.5';
+            var ratingHtml = item.avg_rating > 0 
+                ? `<div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${parseFloat(item.avg_rating).toFixed(1)}</div>` 
+                : `<div class="text-muted small">Нет оценок</div>`;
             var itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             var cardHtml = `
@@ -456,14 +458,17 @@ $(document).ready(function () {
                                             <p class="card-text text-muted mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${address}</p>
                                         </div>
                                         <div class="text-end">
-                                            <div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${ratingDisplay}</div>
+                                            ${ratingHtml}
                                             <small class="text-muted">${reviewCount > 0 ? reviewCount + " отзывов" : "Новинка"}</small>
                                         </div>
                                     </div>
                                     <hr>
                                     <p class="card-text text-muted mb-3">${description}</p>
-                                    <div class="mb-3">
-                                        <span class="badge bg-light text-dark me-1"><i class="bi bi-tag me-1"></i>${typeName}</span>
+                                    <div class="mb-3 d-flex gap-2 flex-wrap">
+                                        <span class="badge bg-light text-dark"><i class="bi bi-tag me-1"></i>${typeName}</span>
+                                        <span class="badge bg-light text-dark"><i class="bi bi-people me-1"></i>${item.guests || 2} гост.</span>
+                                        <span class="badge bg-light text-dark"><i class="bi bi-door-open me-1"></i>${item.bedrooms || 1} сп.</span>
+                                        <span class="badge bg-light text-dark"><i class="bi bi-aspect-ratio me-1"></i>${item.area || 45} м²</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="fw-bold fs-4 text-danger">${priceFormatted} ₽ <span class="text-muted fs-6 fw-normal">/ сутки</span></div>

@@ -29,10 +29,10 @@ if (session_status() === PHP_SESSION_NONE) {
                         <h4 class="card-title fw-bold mb-2" id="propertyTitle">Загрузка...</h4>
                         <p class="text-muted mb-3"><i class="bi bi-geo-alt-fill text-danger me-1"></i><span
                                 id="propertyLocation">---</span></p>
-                        <div class="d-flex gap-3 mb-3">
-                            <span class="badge bg-light text-dark"><i class="bi bi-people me-1"></i>2 гостя</span>
-                            <span class="badge bg-light text-dark"><i class="bi bi-door-open me-1"></i>1 спальня</span>
-                            <span class="badge bg-light text-dark"><i class="bi bi-aspect-ratio me-1"></i>45 м²</span>
+                        <div class="d-flex gap-3 mb-3" id="propertyDetails">
+                            <span class="badge bg-light text-dark"><i class="bi bi-people me-1"></i><span id="detailGuests">2</span> гостей</span>
+                            <span class="badge bg-light text-dark"><i class="bi bi-door-open me-1"></i><span id="detailBedrooms">1</span> спальня</span>
+                            <span class="badge bg-light text-dark"><i class="bi bi-aspect-ratio me-1"></i><span id="detailArea">45</span> м²</span>
                         </div>
                         <hr>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -183,6 +183,9 @@ if (session_status() === PHP_SESSION_NONE) {
             if (resourceId) {
                 $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/resources/' + resourceId, function(data) {
                     if (data.image_url) $('#propertyImage').attr('src', data.image_url);
+                    if (data.area) $('#detailArea').text(data.area);
+                    if (data.guests) $('#detailGuests').text(data.guests);
+                    if (data.bedrooms) $('#detailBedrooms').text(data.bedrooms);
                 });
             }
 
@@ -266,7 +269,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     email: $('#guestEmail').val(),
                     phone: $('#guestPhone').val(),
                     passport: $('#guestPassport').val(),
-                    comments: $('#guestComments').val(),
+                    comment: $('#guestComments').val(), // Исправлено на comment для бекенда
                     total: currentTotal,
                     resource_id: resourceId || 1,
                     user_id: sessionUserId,

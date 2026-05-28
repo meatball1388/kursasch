@@ -137,8 +137,8 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
           </div>
           <div class="table-responsive">
             <table class="table align-middle">
-              <thead><tr><th>#</th><th>Клиент</th><th>Объект</th><th>Заезд</th><th>Выезд</th><th>Сумма</th><th>Статус</th><th></th></tr></thead>
-              <tbody id="tbBookings"><tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-danger spinner-border-sm"></div></td></tr></tbody>
+              <thead><tr><th>#</th><th>Клиент</th><th>Объект</th><th>Заезд</th><th>Выезд</th><th>Сумма</th><th>Статус</th><th>Пожелания</th><th></th></tr></thead>
+              <tbody id="tbBookings"><tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-danger spinner-border-sm"></div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -160,6 +160,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
                   <option value="dacha">Дача</option>
                   <option value="room">Комната</option>
                   <option value="cottedzh">Коттедж</option>
+                  <option value="house">Дом</option>
                 </select>
               </div>
               <div class="col-md-6">
@@ -174,9 +175,25 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
                 <label class="form-label fw-semibold small">Цена за сутки (₽)</label>
                 <input type="number" class="form-control" id="rPrice" placeholder="2500" min="0" required>
               </div>
-              <div class="col-md-8">
-                <label class="form-label fw-semibold small">URL фотографии (необязательно)</label>
-                <input type="url" class="form-control" id="rImage" placeholder="https://...">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Гостей</label>
+                <input type="number" class="form-control" id="rGuests" value="2" min="1">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Спален</label>
+                <input type="number" class="form-control" id="rBedrooms" value="1" min="1">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold small">Площадь (м²)</label>
+                <input type="number" class="form-control" id="rArea" value="45" min="1">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Загрузить фото</label>
+                <input type="file" class="form-control" id="rFile" accept="image/*">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold small">Или вставьте URL</label>
+                <input type="url" class="form-control" id="rImage" placeholder="../img/property/...">
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold small">Описание</label>
@@ -372,14 +389,33 @@ $(document).on('click', '.edit-btn', function(){
     title='Редактировать объект #'+item.id;
     html=`
       <div class="mb-3"><label class="form-label fw-semibold small">Название</label><input class="form-control" id="editName" value="${esc(item.name||'')}"></div>
-      <div class="mb-3"><label class="form-label fw-semibold small">Цена (₽)</label><input type="number" class="form-control" id="editPrice" value="${item.base_price||0}"></div>
-      <div class="mb-3"><label class="form-label fw-semibold small">URL фото</label><input class="form-control" id="editImage" value="${esc(item.image_url||'')}"></div>
+      <div class="row g-2 mb-3">
+        <div class="col-6"><label class="form-label fw-semibold small">Город / Регион</label><input class="form-control" id="editLocation" value="${esc(item.location||'')}"></div>
+        <div class="col-6"><label class="form-label fw-semibold small">Адрес</label><input class="form-control" id="editAddress" value="${esc(item.address||'')}"></div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6"><label class="form-label fw-semibold small">Цена (₽)</label><input type="number" class="form-control" id="editPrice" value="${item.base_price||0}"></div>
+        <div class="col-6"><label class="form-label fw-semibold small">Площадь</label><input type="number" class="form-control" id="editArea" value="${item.area||0}"></div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-6"><label class="form-label fw-semibold small">Гостей</label><input type="number" class="form-control" id="editGuests" value="${item.guests||0}"></div>
+        <div class="col-6"><label class="form-label fw-semibold small">Спален</label><input type="number" class="form-control" id="editBedrooms" value="${item.bedrooms||0}"></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Заменить фото</label>
+        <input type="file" class="form-control" id="editFile" accept="image/*">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Или вставьте URL фото</label>
+        <input class="form-control" id="editImage" value="${esc(item.image_url||'')}">
+      </div>
       <div class="mb-3"><label class="form-label fw-semibold small">Статус</label>
         <select class="form-select" id="editActive">
           <option value="true" ${item.is_active?'selected':''}>Активен</option>
           <option value="false" ${!item.is_active?'selected':''}>Отключён</option>
         </select></div>`;
-  } else if(currentTable==='bookings'){
+  }
+ else if(currentTable==='bookings'){
     title='Редактировать бронь #'+item.id;
     html=`<div class="mb-3"><label class="form-label fw-semibold small">Статус</label>
       <select class="form-select" id="editStatus">
@@ -392,44 +428,136 @@ $(document).on('click', '.edit-btn', function(){
 });
 
 $('#saveEditBtn').on('click', function(){
-  let fields={};
-  if(currentTable==='users') fields={role:$('#editRole').val()};
-  else if(currentTable==='resources') fields={name:$('#editName').val(),base_price:parseFloat($('#editPrice').val()),image_url:$('#editImage').val(),is_active:$('#editActive').val()==='true'};
-  else if(currentTable==='bookings') fields={status:$('#editStatus').val()};
-  $.ajax({url:API+'/admin_api', method:'POST', contentType:'application/json',
-    data:JSON.stringify({action:'update', table:currentTable, id:currentEditId, fields}),
-    success(r){
-      if(r.success){bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();loadTable(currentTable);loadStats();}
-      else alert(r.error);
+  const btn = $(this);
+  const originalText = btn.text();
+  
+  function performUpdate(imageUrl) {
+    let fields={};
+    if(currentTable==='users') fields={role:$('#editRole').val()};
+    else if(currentTable==='resources') {
+      fields={
+        name:$('#editName').val(),
+        location:$('#editLocation').val(),
+        address:$('#editAddress').val(),
+        base_price:parseFloat($('#editPrice').val()),
+        area:parseInt($('#editArea').val()),
+        guests:parseInt($('#editGuests').val()),
+        bedrooms:parseInt($('#editBedrooms').val()),
+        image_url: imageUrl || $('#editImage').val(),
+        is_active:$('#editActive').val()==='true'
+      };
     }
-  });
+    else if(currentTable==='bookings') fields={status:$('#editStatus').val()};
+
+    $.ajax({url:API+'/admin_api', method:'POST', contentType:'application/json',
+      data:JSON.stringify({action:'update', table:currentTable, id:currentEditId, fields}),
+      success(r){
+        btn.prop('disabled', false).text(originalText);
+        if(r.success){
+          bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+          loadTable(currentTable);
+          loadStats();
+        } else alert(r.error);
+      },
+      error() {
+        btn.prop('disabled', false).text(originalText);
+        alert('Ошибка при сохранении');
+      }
+    });
+  }
+
+  btn.prop('disabled', true).text('Сохранение...');
+
+  // Если мы редактируем ресурс и выбран файл
+  if (currentTable === 'resources') {
+    const fileInput = $('#editFile')[0];
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      
+      $.ajax({
+        url: API + '/upload',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success(res) {
+          performUpdate(res.url);
+        },
+        error() {
+          alert('Ошибка загрузки фото. Изменения не сохранены.');
+          btn.prop('disabled', false).text(originalText);
+        }
+      });
+      return;
+    }
+  }
+
+  performUpdate();
 });
 
 // === ADD RESOURCE ===
 $('#addForm').on('submit', function(e){
   e.preventDefault();
   const btn=$('#addBtn');
-  btn.prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-2"></span>Добавляем...');
-  $.ajax({url:API+'/resources', method:'POST', contentType:'application/json',
-    data:JSON.stringify({name:$('#rName').val(), type:$('#rType').val(),
-      description:$('#rDesc').val(), base_price:parseFloat($('#rPrice').val()),
-      address:$('#rAddress').val(), location:$('#rLocation').val(),
-      image_url:$('#rImage').val()||null, is_active:true}),
-    success(r){
-      if(r.id){
-        $('#addAlert').html('<div class="alert alert-success border-0 rounded-3 mb-3"><i class="bi bi-check-circle me-2"></i>Объект добавлен с ID #'+r.id+'</div>');
-        $('#addForm')[0].reset();
-        loadStats();
-      } else {
-        $('#addAlert').html('<div class="alert alert-danger border-0 rounded-3 mb-3">Ошибка: '+(r.error||'неизвестная')+'</div>');
+  const originalText = btn.text();
+  
+  function performAdd(imageUrl) {
+    $.ajax({url:API+'/resources', method:'POST', contentType:'application/json',
+      data:JSON.stringify({
+        name:$('#rName').val(), 
+        type:$('#rType').val(),
+        description:$('#rDesc').val(), 
+        base_price:parseFloat($('#rPrice').val()),
+        address:$('#rAddress').val(), 
+        location:$('#rLocation').val(),
+        area:parseInt($('#rArea').val()),
+        guests:parseInt($('#rGuests').val()),
+        bedrooms:parseInt($('#rBedrooms').val()),
+        image_url: imageUrl || $('#rImage').val() || null, 
+        is_active:true
+      }),
+      success(r){
+        if(r.id){
+          $('#addAlert').html('<div class="alert alert-success border-0 rounded-3 mb-3"><i class="bi bi-check-circle me-2"></i>Объект добавлен с ID #'+r.id+'</div>');
+          $('#addForm')[0].reset();
+          loadStats();
+        } else {
+          $('#addAlert').html('<div class="alert alert-danger border-0 rounded-3 mb-3">Ошибка: '+(r.error||'неизвестная')+'</div>');
+        }
+        btn.prop('disabled',false).html('<i class="bi bi-plus-circle me-2"></i>Добавить объект');
+      },
+      error(){
+        $('#addAlert').html('<div class="alert alert-danger border-0 rounded-3 mb-3">Ошибка сервера</div>');
+        btn.prop('disabled',false).html('<i class="bi bi-plus-circle me-2"></i>Добавить объект');
       }
-      btn.prop('disabled',false).html('<i class="bi bi-plus-circle me-2"></i>Добавить объект');
-    },
-    error(){
-      $('#addAlert').html('<div class="alert alert-danger border-0 rounded-3 mb-3">Ошибка сервера</div>');
-      btn.prop('disabled',false).html('<i class="bi bi-plus-circle me-2"></i>Добавить объект');
-    }
-  });
+    });
+  }
+
+  btn.prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-2"></span>Добавляем...');
+
+  const fileInput = $('#rFile')[0];
+  if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    $.ajax({
+      url: API + '/upload',
+      method: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success(res) {
+        performAdd(res.url);
+      },
+      error() {
+        alert('Ошибка загрузки фото. Будет использована стандартная картинка или URL.');
+        performAdd(null);
+      }
+    });
+  } else {
+    performAdd(null);
+  }
 });
 
 // Init

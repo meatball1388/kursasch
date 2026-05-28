@@ -80,6 +80,14 @@ if (session_status() === PHP_SESSION_NONE) {
                                 </div>
                             </div>
 
+                            <!-- Заголовок -->
+                            <div class="mb-3">
+                                <label for="title" class="form-label fw-medium">Название объявления</label>
+                                <input type="text" class="form-control form-control-lg" id="title" name="title" 
+                                    placeholder="Например: Уютная студия в центре" required>
+                                <small class="text-muted">Краткое и привлекательное название вашего жилья.</small>
+                            </div>
+
                             <!-- Адрес -->
                             <div class="mb-3">
                                 <label for="address" class="form-label fw-medium">Адрес</label>
@@ -96,17 +104,21 @@ if (session_status() === PHP_SESSION_NONE) {
 
                             <!-- Параметры жилья -->
                             <div class="row g-3 mb-3">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="guests" class="form-label fw-medium">Гостей</label>
                                     <input type="number" class="form-control" id="guests" name="guests" min="1" max="20" value="2" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="bedrooms" class="form-label fw-medium">Спален</label>
                                     <input type="number" class="form-control" id="bedrooms" name="bedrooms" min="1" max="10" value="1" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="beds" class="form-label fw-medium">Кроватей</label>
                                     <input type="number" class="form-control" id="beds" name="beds" min="1" max="20" value="1" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="area" class="form-label fw-medium">Площадь (м²)</label>
+                                    <input type="number" class="form-control" id="area" name="area" min="5" max="1000" value="45" required>
                                 </div>
                             </div>
 
@@ -220,16 +232,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
                 var $btn = $(this).find('button[type="submit"]');
                 var originalText = $btn.html();
-                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Отправка...');
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Публикация...');
 
                 var propertyType = $('input[name="property_type"]:checked').val() || 'apartment';
+                var title = $('#title').val() || '';
                 var address = $('#address').val() || '';
                 var description = $('#description').val() || '';
                 var guests = parseInt($('#guests').val()) || 1;
                 var bedrooms = parseInt($('#bedrooms').val()) || 1;
-                var beds = parseInt($('#beds').val()) || 1;
+                var area = parseInt($('#area').val()) || 0;
                 var price = parseFloat($('#price').val()) || 0;
-                var phone = $('#phone').val() || '';
 
                 var amenities = [];
                 $('input[name="amenities[]"]:checked').each(function() {
@@ -242,46 +254,72 @@ if (session_status() === PHP_SESSION_NONE) {
                 var typeNames = {
                     'apartment': 'Квартира',
                     'house': 'Дом',
-                    'room': 'Комната'
+                    'room': 'Комната',
+                    'dacha': 'Дача',
+                    'cottedzh': 'Коттедж'
                 };
                 var typeName = typeNames[propertyType] || 'Объект';
 
-                var apiData = {
-                    name: typeName + ' по адресу ' + address,
-                    type: propertyType,
-                    description: description,
-                    base_price: price,
-                    is_active: true,
-                    address: address,
-                    location: location,
-                    details: {
+                function saveResource(imageUrl) {
+                    var apiData = {
+                        name: title || typeName,
+                        type: propertyType,
+                        description: description,
+                        base_price: price,
+                        is_active: true,
+                        address: address,
+                        location: location,
+                        image_url: imageUrl,
+                        area: area,
                         guests: guests,
                         bedrooms: bedrooms,
-                        beds: beds,
-                        amenities: amenities,
-                        phone: phone
-                    }
-                };
+                        amenities: amenities
+                    };
 
-                $.ajax({
-                    url: 'http://' + (window.location.hostname || 'localhost') + ':8000/resources',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(apiData),
-                    success: function(response) {
-                        alert('Ваше объявление успешно размещено и отправлено на модерацию!');
-                        window.location.href = 'index.php';
-                    },
-                    error: function(xhr) {
-                        var errorMsg = 'Ошибка публикации';
-                        try {
-                            var resp = xhr.responseJSON;
-                            errorMsg = resp ? resp.error || resp.message || errorMsg : errorMsg;
-                        } catch(e) {}
-                        alert(errorMsg);
-                        $btn.prop('disabled', false).html(originalText);
-                    }
-                });
+                    $.ajax({
+                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/resources',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(apiData),
+                        success: function(response) {
+                            alert('Объект успешно добавлен!');
+                            window.location.href = 'index.php';
+                        },
+                        error: function(xhr) {
+                            var errorMsg = 'Ошибка при добавлении объекта';
+                            try {
+                                var res = xhr.responseJSON;
+                                if (res && res.error) errorMsg = res.error;
+                            } catch (e) {}
+                            alert(errorMsg);
+                            $btn.prop('disabled', false).html(originalText);
+                        }
+                    });
+                }
+
+                // Проверяем наличие файла
+                var fileInput = $('#photos')[0];
+                if (fileInput.files && fileInput.files.length > 0) {
+                    var formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+
+                    $.ajax({
+                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/upload',
+                        method: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(res) {
+                            saveResource(res.url);
+                        },
+                        error: function() {
+                            alert('Ошибка при загрузке изображения. Будет использовано стандартное.');
+                            saveResource(null);
+                        }
+                    });
+                } else {
+                    saveResource(null);
+                }
             });
         });
     </script>

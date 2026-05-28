@@ -35,40 +35,29 @@ async def train():
 async def recommend(request: Request, body: RecommendRequest):
     pool = request.app.state.pool
     try:
+        print(f"DEBUG AI: Requested property_type='{body.property_type}'")
         # Mapping frontend types to DB types
         type_map = {
             "apartment": "apartment",
             "house": "dacha",
             "villa": "cottedzh",
-            "room": "room"
+            "room": "room",
+            "dacha": "dacha",
+            "cottedzh": "cottedzh"
         }
-        db_type = type_map.get(body.property_type, "apartment")
+        db_type = type_map.get(body.property_type, body.property_type) # Fallback to raw value if not mapped
+        print(f"DEBUG AI: Mapped db_type='{db_type}'")
 
         async with pool.acquire() as con:
-            # Step 1: Strict filtering by type and PRICE if possible
+            # Строгая фильтрация по типу и цене.
             rows = await con.fetch(
                 """SELECT id, type, location, base_price FROM resources 
-                   WHERE is_active = TRUE AND type = $1 
-                   AND base_price >= $2 AND base_price <= $3""",
+                   WHERE is_active = TRUE AND type = $1 AND base_price >= $2 AND base_price <= $3""",
                 db_type, body.min_price, body.max_price
             )
 
-            # Step 2: If no strict matches by type + price, fall back to city + price
             if not rows:
-                rows = await con.fetch(
-                    """SELECT id, type, location, base_price FROM resources 
-                       WHERE is_active = TRUE AND location ILIKE $1
-                       AND base_price >= $2 AND base_price <= $3""",
-                    f"%{body.city}%", body.min_price, body.max_price
-                )
-            
-            # Step 3: Final fallback: all active within price range
-            if not rows:
-                rows = await con.fetch(
-                    """SELECT id, type, location, base_price FROM resources 
-                       WHERE is_active = TRUE AND base_price >= $1 AND base_price <= $2""",
-                    body.min_price, body.max_price
-                )
+                return {"status": "success", "recommendations": []}
 
             candidates = [dict(r) for r in rows]
 
