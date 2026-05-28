@@ -196,6 +196,18 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
                 <input type="url" class="form-control" id="rImage" placeholder="../img/property/...">
               </div>
               <div class="col-12">
+                <label class="form-label fw-semibold small">Удобства</label>
+                <div class="d-flex flex-wrap gap-3">
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="wifi" id="a_wifi"><label class="form-check-label small" for="a_wifi">Wi-Fi</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="kitchen" id="a_kitchen"><label class="form-check-label small" for="a_kitchen">Кухня</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="parking" id="a_parking"><label class="form-check-label small" for="a_parking">Парковка</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="tv" id="a_tv"><label class="form-check-label small" for="a_tv">ТВ</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="washer" id="a_washer"><label class="form-check-label small" for="a_washer">Стиралка</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="ac" id="a_ac"><label class="form-check-label small" for="a_ac">Кондиционер</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="safe" id="a_safe"><label class="form-check-label small" for="a_safe">Сейф</label></div>
+                </div>
+              </div>
+              <div class="col-12">
                 <label class="form-label fw-semibold small">Описание</label>
                 <textarea class="form-control" id="rDesc" rows="3" placeholder="Уютная квартира в центре..."></textarea>
               </div>
@@ -387,6 +399,9 @@ $(document).on('click', '.edit-btn', function(){
       </select></div>`;
   } else if(currentTable==='resources'){
     title='Редактировать объект #'+item.id;
+    let amens = [];
+    try { if(item.amenities) amens = typeof item.amenities === 'string' ? JSON.parse(item.amenities) : item.amenities; } catch(e){}
+    
     html=`
       <div class="mb-3"><label class="form-label fw-semibold small">Название</label><input class="form-control" id="editName" value="${esc(item.name||'')}"></div>
       <div class="row g-2 mb-3">
@@ -400,6 +415,18 @@ $(document).on('click', '.edit-btn', function(){
       <div class="row g-2 mb-3">
         <div class="col-6"><label class="form-label fw-semibold small">Гостей</label><input type="number" class="form-control" id="editGuests" value="${item.guests||0}"></div>
         <div class="col-6"><label class="form-label fw-semibold small">Спален</label><input type="number" class="form-control" id="editBedrooms" value="${item.bedrooms||0}"></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold small">Удобства</label>
+        <div class="d-flex flex-wrap gap-3">
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="wifi" id="e_wifi" ${amens.includes('wifi')?'checked':''}><label class="form-check-label small" for="e_wifi">Wi-Fi</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="kitchen" id="e_kitchen" ${amens.includes('kitchen')?'checked':''}><label class="form-check-label small" for="e_kitchen">Кухня</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="parking" id="e_parking" ${amens.includes('parking')?'checked':''}><label class="form-check-label small" for="e_parking">Парковка</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="tv" id="e_tv" ${amens.includes('tv')?'checked':''}><label class="form-check-label small" for="e_tv">ТВ</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="washer" id="e_washer" ${amens.includes('washer')?'checked':''}><label class="form-check-label small" for="e_washer">Стиралка</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="ac" id="e_ac" ${amens.includes('ac')?'checked':''}><label class="form-check-label small" for="e_ac">Кондиционер</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="safe" id="e_safe" ${amens.includes('safe')?'checked':''}><label class="form-check-label small" for="e_safe">Сейф</label></div>
+        </div>
       </div>
       <div class="mb-3">
         <label class="form-label fw-semibold small">Заменить фото</label>
@@ -435,6 +462,7 @@ $('#saveEditBtn').on('click', function(){
     let fields={};
     if(currentTable==='users') fields={role:$('#editRole').val()};
     else if(currentTable==='resources') {
+      const amens = $('input[name="eAmenities"]:checked').map(function(){return this.value;}).get();
       fields={
         name:$('#editName').val(),
         location:$('#editLocation').val(),
@@ -443,6 +471,7 @@ $('#saveEditBtn').on('click', function(){
         area:parseInt($('#editArea').val()),
         guests:parseInt($('#editGuests').val()),
         bedrooms:parseInt($('#editBedrooms').val()),
+        amenities: amens,
         image_url: imageUrl || $('#editImage').val(),
         is_active:$('#editActive').val()==='true'
       };
@@ -503,6 +532,7 @@ $('#addForm').on('submit', function(e){
   const originalText = btn.text();
   
   function performAdd(imageUrl) {
+    const amens = $('input[name="rAmenities"]:checked').map(function(){return this.value;}).get();
     $.ajax({url:API+'/resources', method:'POST', contentType:'application/json',
       data:JSON.stringify({
         name:$('#rName').val(), 
@@ -514,6 +544,7 @@ $('#addForm').on('submit', function(e){
         area:parseInt($('#rArea').val()),
         guests:parseInt($('#rGuests').val()),
         bedrooms:parseInt($('#rBedrooms').val()),
+        amenities: amens,
         image_url: imageUrl || $('#rImage').val() || null, 
         is_active:true
       }),
