@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS public.resources (
     is_active   BOOLEAN DEFAULT TRUE,
     address     VARCHAR(255),
     location    VARCHAR(255),
-    image_url   TEXT
+    image_url   TEXT,
+    area        INTEGER DEFAULT 0,
+    guests      INTEGER DEFAULT 0,
+    bedrooms    INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS public.messages (
@@ -98,34 +101,34 @@ INSERT INTO public.users (email, password_hash, name, surname, role, created_at,
 ON CONFLICT (email) DO NOTHING;
 
 -- Объекты недвижимости
-INSERT INTO public.resources (name, type, description, base_price, is_active, address, location, image_url) VALUES
+INSERT INTO public.resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms) VALUES
 ('Апартаменты «Metro Plus»',    'apartment',
  'Уютная студия в центре города. Современный ремонт, вся необходимая техника, Wi-Fi. Рядом метро.',
  2500.00, TRUE, 'Москва, ул. Тверская, д. 15', 'Москва',
- '../img/property/metro-plus.png'),
+ '../img/property/metro-plus.png', 45, 2, 1),
 
 ('Загородный дом «Лесная сказка»', 'dacha',
  'Просторный дом в лесу. Идеально для отдыха с семьёй. Мангальная зона, баня, парковка.',
  4500.00, TRUE, 'Московская обл., д. Лесное', 'Московская область',
- '../img/property/lesnau-skazka.webp'),
+ '../img/property/lesnau-skazka.webp', 120, 6, 3),
 
 ('Комната в квартире', 'room',
  'Уютная комната в центре Москвы. Общая кухня и ванная. Отличный вариант для бюджетного проживания.',
  1200.00, TRUE, 'Москва, ул. Арбат, д. 25', 'Москва',
- '../img/property/komnata-arbat.jpg'),
+ '../img/property/komnata-arbat.jpg', 15, 1, 1),
 
 ('Коттедж «VIP Luxury»', 'cottedzh',
  'Роскошный коттедж с бассейном и сауной. Премиальный ремонт, панорамные окна.',
  8500.00, TRUE, 'Московская обл., пос. Барвиха', 'Московская область',
- '../img/property/kotedzh-luxery.webp'),
+ '../img/property/kotedzh-luxery.webp', 250, 8, 4),
 
 ('Студия «City Center»', 'apartment',
  'Современная студия в деловом центре. Панорамные окна, вид на город. Подходит для командировок.',
  3200.00, TRUE, 'Москва, Сити, Пресненская наб., д. 10', 'Москва',
- '../img/property/studia.jpg'),
+ '../img/property/studia.jpg', 38, 2, 1),
 
 ('Дача «У озера»', 'dacha',
  'Уютный домик на берегу озера. Рыбалка, прогулки на природе. Есть лодка и мангал.',
  3800.00, TRUE, 'Московская обл., д. Озерки', 'Московская область',
- '../img/property/dacha-u-ozera.jpg')
+ '../img/property/dacha-u-ozera.jpg', 65, 4, 2)
 ON CONFLICT DO NOTHING;

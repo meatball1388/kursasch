@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import dotenv
 import os
@@ -8,6 +8,8 @@ from datetime import datetime, date
 import bcrypt
 from ai_router import ai_router
 import uuid
+import json
+import shutil
 from yookassa import Configuration, Payment as YooPayment
 
 '''
@@ -56,22 +58,60 @@ async def lifespan(app: FastAPI):
     )
     print("Database pool created")
     
-    # Автоматическая миграция: проверка наличия колонки external_id в таблице payments
+    # Автоматическая миграция: проверка наличия колонок
     async with app.state.pool.acquire() as con:
-        check_col = await con.fetchval("""
-            SELECT count(*)
-            FROM information_schema.columns 
+        # 1. Проверка external_id в payments
+        check_pay = await con.fetchval("""
+            SELECT count(*) FROM information_schema.columns 
             WHERE table_name='payments' AND column_name='external_id';
         """)
-        if check_col == 0:
+        if check_pay == 0:
             print("Миграция: Добавление колонки external_id в таблицу payments...")
-            try:
-                await con.execute("ALTER TABLE payments ADD COLUMN external_id VARCHAR(100);")
-                print("Миграция завершена успешно.")
-            except Exception as e:
-                print(f"Ошибка при миграции: {e}")
-        else:
-            print("База данных актуальна (колонки на месте)")
+            await con.execute("ALTER TABLE payments ADD COLUMN external_id VARCHAR(100);")
+
+        # 2. Проверка колонок в resources (area, guests, bedrooms, amenities)
+        resource_cols = {
+            "area": "INTEGER DEFAULT 0",
+            "guests": "INTEGER DEFAULT 0",
+            "bedrooms": "INTEGER DEFAULT 0",
+            "amenities": "TEXT DEFAULT '[]'"
+        }
+        for col, col_def in resource_cols.items():
+            check_res = await con.fetchval(f"""
+                SELECT count(*) FROM information_schema.columns 
+                WHERE table_name='resources' AND column_name='{col}';
+            """)
+            if check_res == 0:
+                print(f"Миграция: Добавление колонки {col} в таблицу resources...")
+                await con.execute(f"ALTER TABLE resources ADD COLUMN {col} {col_def};")
+
+        # 3. Проверка таблицы reviews
+        check_reviews = await con.fetchval("""
+            SELECT count(*) FROM information_schema.tables WHERE table_name='reviews';
+        """)
+        if check_reviews == 0:
+            print("Миграция: Создание таблицы reviews...")
+            await con.execute("""
+                CREATE TABLE reviews (
+                    id SERIAL PRIMARY KEY,
+                    resource_id INTEGER REFERENCES resources(id) ON DELETE CASCADE,
+                    author_name VARCHAR(100),
+                    rating INTEGER DEFAULT 5,
+                    comment TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+        # 4. Проверка колонки comment в bookings
+        check_booking_comment = await con.fetchval("""
+            SELECT count(*) FROM information_schema.columns 
+            WHERE table_name='bookings' AND column_name='comment';
+        """)
+        if check_booking_comment == 0:
+            print("Миграция: Добавление колонки comment в таблицу bookings...")
+            await con.execute("ALTER TABLE bookings ADD COLUMN comment TEXT;")
+            
+        print("База данных актуальна.")
 
     yield
     # Shutdown — закрываем пул
@@ -81,14 +121,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS — разрешаем запросы с любого источника
+# CORS — разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"http(s)?://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    origin = request.headers.get("origin")
+    print(f"DEBUG: Request {request.method} {request.url} from origin: {origin}")
+    response = await call_next(request)
+    return response
 
 # Подключаем AI-роутер
 app.include_router(ai_router, prefix="/ai", tags=["AI"])
@@ -103,7 +150,9 @@ def map_image_url(image_url: str, resource_id: int) -> str:
     if not image_url:
         return "../img/property/metro-plus.png"
     
-    if "http" in image_url:
+    # Если это один из наших начальных объектов и у него внешний URL (или заглушка), 
+    # маппим его на локальный файл. Для новых объектов (ID > 8) оставляем как есть.
+    if "http" in image_url and resource_id <= 8:
         mapping = {
             1: "metro-plus.png",
             2: "lesnau-skazka.webp",
@@ -113,8 +162,9 @@ def map_image_url(image_url: str, resource_id: int) -> str:
             6: "dacha-u-ozera.jpg",
             8: "metro-plus.png"
         }
-        fname = mapping.get(resource_id, "metro-plus.png")
-        return f"../img/property/{fname}"
+        fname = mapping.get(resource_id)
+        if fname:
+            return f"../img/property/{fname}"
     
     return image_url
 
@@ -218,6 +268,7 @@ async def search(request: Request):
             f"""
             SELECT r.id, r.name, r.type, r.description,
                    r.address, r.location, r.base_price, r.image_url,
+                   r.area, r.guests, r.bedrooms, r.amenities,
                    COUNT(rv.id)::int AS review_count,
                    COALESCE(ROUND(AVG(rv.rating)::numeric, 1), 0)::float AS avg_rating
             FROM resources r
@@ -296,6 +347,7 @@ async def check_login(request: Request):
             if bcrypt.checkpw(data["password"].encode("utf8"), stored_hash.encode("utf8")):
                 return {
                     "success": "true",
+                    "id": result[0]["id"],
                     "redirect": "index.php",
                     "message": "вход успешен",
                     "id": result[0]["id"],
@@ -312,6 +364,38 @@ async def check_login(request: Request):
 
 
 # ==============================================================
+# ЗАГРУЗКА ФАЙЛОВ (POST /upload)
+# ==============================================================
+
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    # Путь для сохранения (внутри Docker /img/property)
+    # Корень проекта примонтирован как /img
+    upload_dir = "/img/property"
+    print(f"DEBUG UPLOAD: Target dir: {upload_dir}")
+    
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+        print(f"DEBUG UPLOAD: Directory ensured: {os.path.exists(upload_dir)}")
+        
+        file_ext = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        print(f"DEBUG UPLOAD: Full file path: {file_path}")
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        print(f"DEBUG UPLOAD: File saved successfully: {os.path.exists(file_path)}")
+        return {"url": f"../img/property/{unique_filename}"}
+    except Exception as e:
+        print(f"DEBUG UPLOAD ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================
 # СОЗДАНИЕ РЕСУРСА (POST /resources)
 # ==============================================================
 
@@ -320,10 +404,23 @@ async def create_resource(request: Request):
     pool = request.app.state.pool
     try:
         data = await request.json()
+        
+        # Обработка вложенных данных из rent.php (если есть)
+        details = data.get("details", {})
+        area = data.get("area") or details.get("area") or 0
+        guests = data.get("guests") or details.get("guests") or 0
+        bedrooms = data.get("bedrooms") or details.get("bedrooms") or 0
+        amenities = data.get("amenities") or details.get("amenities") or []
+        
+        if isinstance(amenities, list):
+            amenities_str = json.dumps(amenities, ensure_ascii=False)
+        else:
+            amenities_str = str(amenities)
+
         async with pool.acquire() as con:
             result = await con.fetchrow(
-                """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id""",
+                """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms, amenities)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
                 data.get("name", "Без названия"),
                 data.get("type", "apartment"),
                 data.get("description", ""),
@@ -331,10 +428,16 @@ async def create_resource(request: Request):
                 data.get("is_active", True),
                 data.get("address", ""),
                 data.get("location", ""),
-                data.get("image_url", None)
+                data.get("image_url", None),
+                int(area),
+                int(guests),
+                int(bedrooms),
+                amenities_str
             )
             return {"id": result["id"], "message": "Объект успешно добавлен"}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
 
 
@@ -358,22 +461,37 @@ async def create_booking(request: Request):
         price = float(data.get("price") or data.get("price_per_night", 0))
         resource_id = int(data.get("resource_id", 1))
         user_id = int(data.get("user_id", 1))
+        comment = data.get("comment", "")
 
         async with pool.acquire() as con:
-            # Проверяем доступность
+            # Проверяем доступность... (unchanged)
+            # Проверяем доступность. Конфликтуем только с оплаченными, подтвержденными 
+            # или свежими (созданными < 30 мин назад) бронированиями других пользователей.
+            # Бронирования со статусом CANCELLED или COMPLETED игнорируем.
             conflict = await con.fetchrow(
-                """SELECT id FROM bookings
-                   WHERE resource_id = $1 AND status != 'CANCELLED'
-                   AND NOT (end_time <= $2 OR start_time >= $3)""",
+                """SELECT id, status, user_id FROM bookings
+                   WHERE resource_id = $1 
+                   AND status NOT IN ('CANCELLED', 'COMPLETED')
+                   AND (
+                       status != 'CREATED' 
+                       OR created_at > NOW() - INTERVAL '30 minutes'
+                   )
+                   AND NOT (end_time <= $2 OR start_time >= $3)
+                   LIMIT 1""",
                 resource_id, start_time, end_time
             )
+            
             if conflict:
-                return {"error": "Объект уже забронирован на эти даты", "success": False}
+                # Если конфликт с собственным CREATED бронированием — разрешаем "перезаписать" (просто создаем новое)
+                if conflict["status"] == "CREATED" and conflict["user_id"] == user_id:
+                    print(f"DEBUG: Found own old CREATED booking {conflict['id']}, allowing new one.")
+                else:
+                    return {"error": "Объект уже забронирован на эти даты", "success": False}
 
             result = await con.fetchrow(
-                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price)
-                   VALUES ($1, $2, $3, $4, 'CREATED', $5) RETURNING id""",
-                user_id, resource_id, start_time, end_time, price
+                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment)
+                   VALUES ($1, $2, $3, $4, 'CREATED', $5, $6) RETURNING id""",
+                user_id, resource_id, start_time, end_time, price, comment
             )
             return {"id": result["id"], "message": "Бронирование успешно создано", "success": True}
     except Exception as e:
@@ -413,7 +531,7 @@ async def admin_api(request: Request):
                     )
                 elif table == "resources":
                     rows = await con.fetch(
-                        "SELECT id, name, type, base_price, location, address, is_active FROM resources ORDER BY id"
+                        "SELECT id, name, type, base_price, location, address, is_active, area, guests, bedrooms, amenities, image_url FROM resources ORDER BY id"
                     )
                 elif table == "bookings":
                     rows = await con.fetch(
@@ -457,6 +575,11 @@ async def admin_api(request: Request):
                 for idx, (k, v) in enumerate(fields.items()):
                     if not k.isidentifier():
                         continue
+                    
+                    # Специальная обработка amenities
+                    if k == "amenities" and isinstance(v, list):
+                        v = json.dumps(v, ensure_ascii=False)
+                    
                     set_clauses.append(f"{k} = ${idx + 1}")
                     params.append(v)
                 params.append(int(item_id))
@@ -589,7 +712,7 @@ async def my_bookings(request: Request, user_id: int):
         for pay in pending_payments:
             try:
                 print(f"DEBUG: Checking YooKassa status for payment {pay['id']} (ext_id: {pay['external_id']})")
-                payment_info = YooPayment.find(pay["external_id"])
+                payment_info = YooPayment.find_one(pay["external_id"])
                 print(f"DEBUG: YooKassa status for {pay['id']} is {payment_info.status}")
                 if payment_info.status in ["succeeded", "waiting_for_capture"]:
                     print(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID (status: {payment_info.status})")
@@ -634,8 +757,30 @@ async def create_payment(request: Request):
         booking_id = int(data.get("booking_id"))
         amount = float(data.get("amount"))
 
-        # Формируем URL возврата на основе FRONTEND_URL из окружения
-        frontend_base = (os.getenv("FRONTEND_URL") or f"http://{request.base_url.hostname}").rstrip("/")
+        # Формируем URL возврата
+        env_frontend = os.getenv("FRONTEND_URL")
+        origin_header = request.headers.get("origin")
+        referer_header = request.headers.get("referer")
+        
+        if env_frontend:
+            frontend_base = env_frontend.rstrip("/")
+        elif origin_header:
+            frontend_base = origin_header.rstrip("/")
+        elif referer_header:
+            from urllib.parse import urlparse
+            parsed = urlparse(referer_header)
+            frontend_base = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            frontend_base = "http://localhost"
+
+        # КРИТИЧЕСКИЙ ФИКС: Убираем /kursach или /front из конца, если они там есть.
+        # В Docker фронтенд всегда в корне /.
+        for suffix in ["/kursach", "/front"]:
+            if frontend_base.endswith(suffix):
+                frontend_base = frontend_base[:-len(suffix)]
+
+        return_url = f"{frontend_base.rstrip('/')}/bookings.php"
+        print(f"DEBUG PAYMENT: env_frontend='{env_frontend}', FINAL return_url='{return_url}'")
         
         # Создаем платеж в ЮKassa
         idempotence_key = str(uuid.uuid4())
@@ -646,7 +791,7 @@ async def create_payment(request: Request):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"{frontend_base}/front/bookings.php"
+                "return_url": return_url
             },
             "capture": True,
             "description": f"Оплата бронирования №{booking_id}",
@@ -731,7 +876,7 @@ async def confirm_payment(request: Request):
             
             # В тестовом режиме мы можем просто проверить статус через API ЮKassa
             try:
-                payment_info = YooPayment.find(ext_id)
+                payment_info = YooPayment.find_one(ext_id)
                 if payment_info.status == "succeeded":
                     await con.execute(
                         "UPDATE payments SET status = 'SUCCESS', created_at = $1 WHERE id = $2",

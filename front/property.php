@@ -323,6 +323,9 @@ function renderPage(item, reviews) {
     const typeName = typeNames[item.type] || 'Недвижимость';
     $('#heroBadges').html(`
         <span class="hero-badge"><i class="bi bi-tag-fill"></i>${esc(typeName)}</span>
+        <span class="hero-badge"><i class="bi bi-people-fill"></i>${item.guests || 2} гост.</span>
+        <span class="hero-badge"><i class="bi bi-door-open-fill"></i>${item.bedrooms || 1} сп.</span>
+        <span class="hero-badge"><i class="bi bi-aspect-ratio-fill"></i>${item.area || 45} м²</span>
         ${avgR>0?`<span class="hero-badge"><i class="bi bi-star-fill text-warning"></i>${avgR.toFixed(1)} · ${reviewCount} отзывов</span>`:''}
     `);
     $('#heroRatingBadge').toggle(avgR>0);
@@ -330,6 +333,33 @@ function renderPage(item, reviews) {
 
     // Description
     $('#propertyDesc').text(item.description || 'Описание не указано');
+
+    // Amenities
+    const amenityMap = {
+        'wifi': { icon: 'bi-wifi', label: 'Wi-Fi' },
+        'kitchen': { icon: 'bi-cup-hot', label: 'Кухня' },
+        'parking': { icon: 'bi-car-front', label: 'Парковка' },
+        'tv': { icon: 'bi-tv', label: 'ТВ' },
+        'washer': { icon: 'bi-lightning-charge', label: 'Стиральная машина' },
+        'ac': { icon: 'bi-snow', label: 'Кондиционер' },
+        'safe': { icon: 'bi-shield-check', label: 'Безопасность' }
+    };
+    let amens = [];
+    try {
+        if (item.amenities) {
+            amens = typeof item.amenities === 'string' ? JSON.parse(item.amenities) : item.amenities;
+        }
+    } catch(e) { console.error("Parse amenities error", e); }
+    let amenHtml = '';
+    if (amens && amens.length > 0) {
+        amens.forEach(key => {
+            const info = amenityMap[key] || { icon: 'bi-check-circle', label: key };
+            amenHtml += `<span class="amenity-chip"><i class="bi ${info.icon}"></i>${info.label}</span>`;
+        });
+    } else {
+        amenHtml = '<p class="text-muted small">Удобства не указаны</p>';
+    }
+    $('#amenitiesBlock').html(amenHtml);
 
     // Booking card
     $('#bookingPrice').html(`${priceF} ₽ <span style="font-size:.95rem;font-weight:400;opacity:.75;">/ ночь</span>`);

@@ -21,3 +21,7 @@ class Resource(BaseModel):
     is_active: bool
     address: str
     location: str
+    image_url: str = None
+    area: int = 0
+    guests: int = 0
+    bedrooms: int = 0
