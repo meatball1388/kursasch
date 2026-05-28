@@ -169,6 +169,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     <div class="col-md-2">
                         <label class="form-label small text-muted">Тип жилья</label>
                         <select class="form-select" id="aiType">
+                            <option value="any">Любой</option>
                             <option value="apartment">Квартира</option>
                             <option value="dacha">Дача</option>
                             <option value="room">Комната</option>

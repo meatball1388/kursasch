@@ -56,21 +56,14 @@ if (session_status() === PHP_SESSION_NONE) {
                             <div class="mb-4">
                                 <label class="form-label fw-medium">Тип жилья</label>
                                 <div class="row g-2">
-                                    <div class="col-4">
+                                    <div class="col-6">
                                         <input type="radio" class="btn-check" name="property_type" id="apt" value="apartment" checked>
                                         <label class="btn btn-outline-secondary w-100 py-3" for="apt">
                                             <i class="bi bi-building d-block fs-4 mb-1"></i>
                                             <small>Квартира</small>
                                         </label>
                                     </div>
-                                    <div class="col-4">
-                                        <input type="radio" class="btn-check" name="property_type" id="house" value="house">
-                                        <label class="btn btn-outline-secondary w-100 py-3" for="house">
-                                            <i class="bi bi-house d-block fs-4 mb-1"></i>
-                                            <small>Дом</small>
-                                        </label>
-                                    </div>
-                                    <div class="col-4">
+                                    <div class="col-6">
                                         <input type="radio" class="btn-check" name="property_type" id="room" value="room">
                                         <label class="btn btn-outline-secondary w-100 py-3" for="room">
                                             <i class="bi bi-door-open d-block fs-4 mb-1"></i>
@@ -253,7 +246,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
                 var typeNames = {
                     'apartment': 'Квартира',
-                    'house': 'Дом',
                     'room': 'Комната',
                     'dacha': 'Дача',
                     'cottedzh': 'Коттедж'

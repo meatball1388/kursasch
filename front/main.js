@@ -417,8 +417,7 @@ $(document).ready(function () {
             'apartment': 'Квартира',
             'dacha': 'Дача',
             'room': 'Комната',
-            'cottedzh': 'Коттедж',
-            'house': 'Дом'
+            'cottedzh': 'Коттедж'
         };
 
         var favs = getFavorites();

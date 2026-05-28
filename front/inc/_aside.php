@@ -25,12 +25,6 @@
                 <label for="ch4">Коттедж</label>
             </div>
         </li>
-        <li>
-            <div class="form-group">
-                <input type="checkbox" name="property[]" id="ch5" value="house">
-                <label for="ch5">Дом</label>
-            </div>
-        </li>
     </ul>
 
     <h6 class="mt-4 mb-3">Цена за сутки</h6>

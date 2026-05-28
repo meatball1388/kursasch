@@ -44,8 +44,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         'apartment' => 'Квартира', 
                         'dacha' => 'Дача', 
                         'room' => 'Комната', 
-                        'cottedzh' => 'Коттедж',
-                        'house' => 'Дом'
+                        'cottedzh' => 'Коттедж'
                     ];
                     $types = array_map(function ($t) use ($typeNames) {
                         return $typeNames[$t] ?? $t;

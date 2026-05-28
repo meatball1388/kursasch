@@ -139,14 +139,26 @@ def get_recommendations(
         cand_city = cand_city if cand_city in CITIES else CITIES[0]
         cand_type = cand_type if cand_type in PROPERTY_TYPES else PROPERTY_TYPES[0]
 
+        # Use candidate's actual data for ranking
+        cand_price = float(cand.get("base_price", min_price))
+        cand_rooms = cand.get("bedrooms", rooms)
+        cand_guests = cand.get("guests", guests)
+        cand_amenities = cand.get("amenities", amenities)
+        
+        if isinstance(cand_amenities, str):
+            try:
+                cand_amenities = json.loads(cand_amenities)
+            except:
+                cand_amenities = []
+
         row = {
             "city": cand_city,
             "property_type": cand_type,
-            "min_price": cand.get("base_price", min_price),
-            "max_price": cand.get("base_price", max_price),
-            "rooms": rooms,
-            "guests": guests,
-            "amenities": json.dumps(amenities, ensure_ascii=False),
+            "min_price": cand_price,
+            "max_price": cand_price,
+            "rooms": cand_rooms,
+            "guests": cand_guests,
+            "amenities": json.dumps(cand_amenities, ensure_ascii=False),
             "check_in": check_in,
             "check_out": check_out,
         }
@@ -156,11 +168,22 @@ def get_recommendations(
         prob = clf.predict_proba(X)[0][1]
         
         # Add a small score boost if types match perfectly
-        type_match_bonus = 0.05 if cand_type == property_type else 0.0
+        type_match_bonus = 0.15 if cand_type == property_type else 0.0
         
-        score = float(prob) + type_match_bonus + (hash(str(prop_id)) % 100) / 1000.0
+        # Price proximity bonus: better score if closer to user's desired budget
+        price_diff_min = abs(cand_price - min_price)
+        price_diff_max = abs(cand_price - max_price)
+        avg_diff_pct = (price_diff_min + price_diff_max) / (max_price - min_price + 1) / 2
+        price_bonus = max(0, 0.2 * (1 - avg_diff_pct))
+
+        # Base score from model prob + bonuses
+        # We also rescale prob slightly to be more 'positive' (e.g. 0.1 -> 0.5)
+        raw_score = (float(prob) * 2) + type_match_bonus + price_bonus
         
-        results.append({"property_id": prop_id, "score": round(score, 4)})
+        # Final scaling to 0.7 - 0.99 range for display if it's a valid candidate
+        scaled_score = 0.7 + (min(raw_score, 1.0) * 0.29)
+        
+        results.append({"property_id": prop_id, "score": round(scaled_score, 4)})
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_n]

@@ -160,7 +160,6 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
                   <option value="dacha">Дача</option>
                   <option value="room">Комната</option>
                   <option value="cottedzh">Коттедж</option>
-                  <option value="house">Дом</option>
                 </select>
               </div>
               <div class="col-md-6">
@@ -248,7 +247,7 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
 const API = 'http://' + (window.location.hostname || 'localhost') + ':8000';
 let cache = {users:[],resources:[],bookings:[]};
 let currentTable = 'users', currentEditId = null;
-const typeNames = {apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж',house:'Дом'};
+const typeNames = {apartment:'Квартира',dacha:'Дача',room:'Комната',cottedzh:'Коттедж'};
 const statusColors = {CREATED:'warning',CONFIRMED:'success',PAID:'primary',CANCELLED:'secondary'};
 
 // === STATS ===
