@@ -56,18 +56,32 @@ if (session_status() === PHP_SESSION_NONE) {
                             <div class="mb-4">
                                 <label class="form-label fw-medium">Тип жилья</label>
                                 <div class="row g-2">
-                                    <div class="col-6">
+                                    <div class="col-md-3 col-6">
                                         <input type="radio" class="btn-check" name="property_type" id="apt" value="apartment" checked>
-                                        <label class="btn btn-outline-secondary w-100 py-3" for="apt">
+                                        <label class="btn btn-outline-secondary w-100 py-3 text-center" for="apt">
                                             <i class="bi bi-building d-block fs-4 mb-1"></i>
                                             <small>Квартира</small>
                                         </label>
                                     </div>
-                                    <div class="col-6">
+                                    <div class="col-md-3 col-6">
                                         <input type="radio" class="btn-check" name="property_type" id="room" value="room">
-                                        <label class="btn btn-outline-secondary w-100 py-3" for="room">
+                                        <label class="btn btn-outline-secondary w-100 py-3 text-center" for="room">
                                             <i class="bi bi-door-open d-block fs-4 mb-1"></i>
                                             <small>Комната</small>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <input type="radio" class="btn-check" name="property_type" id="dacha" value="dacha">
+                                        <label class="btn btn-outline-secondary w-100 py-3 text-center" for="dacha">
+                                            <i class="bi bi-tree d-block fs-4 mb-1"></i>
+                                            <small>Дача</small>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <input type="radio" class="btn-check" name="property_type" id="cottedzh" value="cottedzh">
+                                        <label class="btn btn-outline-secondary w-100 py-3 text-center" for="cottedzh">
+                                            <i class="bi bi-house-door-fill d-block fs-4 mb-1"></i>
+                                            <small>Коттедж</small>
                                         </label>
                                     </div>
                                 </div>

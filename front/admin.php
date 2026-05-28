@@ -137,8 +137,8 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
           </div>
           <div class="table-responsive">
             <table class="table align-middle">
-              <thead><tr><th>#</th><th>Клиент</th><th>Объект</th><th>Заезд</th><th>Выезд</th><th>Сумма</th><th>Статус</th><th>Пожелания</th><th></th></tr></thead>
-              <tbody id="tbBookings"><tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-danger spinner-border-sm"></div></td></tr></tbody>
+              <thead><tr><th>#</th><th>Клиент</th><th>Объект</th><th>Заезд</th><th>Выезд</th><th>Сумма</th><th>Статус</th><th></th></tr></thead>
+              <tbody id="tbBookings"><tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-danger spinner-border-sm"></div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -240,9 +240,24 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
   </div></div>
 </div>
 
+<!-- Booking Details Modal -->
+<div class="modal fade" id="bookingDetailsModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content border-0 shadow">
+    <div class="modal-header border-0 pb-0">
+      <h6 class="modal-title fw-bold">Детали бронирования</h6>
+      <button class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body" id="bookingDetailsBody"></div>
+    <div class="modal-footer border-0 pt-0">
+      <button class="btn btn-secondary rounded-3" data-bs-dismiss="modal">Закрыть</button>
+    </div>
+  </div></div>
+</div>
+
 <?php include 'inc/_footer.php'; ?>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="main.js"></script>
 <script>
 const API = 'http://' + (window.location.hostname || 'localhost') + ':8000';
 let cache = {users:[],resources:[],bookings:[]};
@@ -340,6 +355,7 @@ function renderTable(tab, data){
         <td class="fw-semibold">${Number(item.price||0).toLocaleString('ru-RU')} ₽</td>
         <td><span class="badge rounded-2 bg-${bc}">${item.status}</span></td>
         <td><div class="d-flex gap-1">
+          <button class="action-btn bg-light text-info info-btn" data-id="${item.id}" title="Детали"><i class="bi bi-info-circle"></i></button>
           <button class="action-btn bg-light text-primary edit-btn" data-id="${item.id}" title="Изменить"><i class="bi bi-pencil"></i></button>
           <button class="action-btn bg-light text-danger delete-btn" data-id="${item.id}" title="Удалить"><i class="bi bi-trash3"></i></button>
         </div></td></tr>`;
@@ -382,6 +398,44 @@ $(document).on('click', '.delete-btn', function(){
     data:JSON.stringify({action:'delete', table:currentTable, id}),
     success(r){ if(r.success){loadTable(currentTable);loadStats();}else alert(r.error); }
   });
+});
+
+// === INFO ===
+$(document).on('click', '.info-btn', function(){
+  const id = $(this).data('id');
+  const item = (cache.bookings||[]).find(i => i.id == id);
+  if(!item) return;
+  
+  const html = `
+    <div class="mb-3">
+      <div class="fw-bold small text-muted text-uppercase mb-2">Основная информация</div>
+      <table class="table table-sm table-borderless mb-0">
+        <tr><td>Объект:</td><td class="fw-bold">${esc(item.resource_name)}</td></tr>
+        <tr><td>Клиент:</td><td>${esc(item.user_name)} (${esc(item.user_email)})</td></tr>
+        <tr><td>Даты:</td><td>${(item.start_time||'').split('T')[0]} — ${(item.end_time||'').split('T')[0]}</td></tr>
+        <tr><td>Сумма:</td><td class="fw-bold text-danger">${Number(item.price||0).toLocaleString('ru-RU')} ₽</td></tr>
+      </table>
+    </div>
+    <div class="mb-3">
+      <div class="fw-bold small text-muted text-uppercase mb-2">Контактные данные</div>
+      <table class="table table-sm table-borderless mb-0">
+        <tr><td>Имя в брони:</td><td>${esc(item.name||'—')}</td></tr>
+        <tr><td>Телефон:</td><td>${esc(item.phone||'—')}</td></tr>
+        <tr><td>Email:</td><td>${esc(item.email||'—')}</td></tr>
+        <tr><td>Паспорт:</td><td>${esc(item.passport||'—')}</td></tr>
+      </table>
+    </div>
+    <div class="mb-3">
+      <div class="fw-bold small text-muted text-uppercase mb-2">Дополнительно</div>
+      <table class="table table-sm table-borderless mb-0">
+        <tr><td>Взрослых:</td><td>${item.adults||0}</td></tr>
+        <tr><td>Детей:</td><td>${item.children||0}</td></tr>
+        <tr><td>Пожелания:</td><td class="fst-italic">${esc(item.comment||'Нет пожеланий')}</td></tr>
+      </table>
+    </div>
+  `;
+  $('#bookingDetailsBody').html(html);
+  new bootstrap.Modal(document.getElementById('bookingDetailsModal')).show();
 });
 
 // === EDIT ===

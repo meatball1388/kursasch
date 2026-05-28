@@ -153,41 +153,29 @@ if (session_status() === PHP_SESSION_NONE) {
 
                 <!-- Форма параметров для рекомендаций -->
                 <div class="row g-3 mb-4" id="aiParamsForm">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label small text-muted">Город</label>
                         <select class="form-select" id="aiCity">
-                            <option value="Москва">Москва</option>
-                            <option value="Санкт-Петербург">Санкт-Петербург</option>
-                            <option value="Казань">Казань</option>
-                            <option value="Сочи">Сочи</option>
-                            <option value="Екатеринбург">Екатеринбург</option>
-                            <option value="Новосибирск">Новосибирск</option>
-                            <option value="Краснодар">Краснодар</option>
-                            <option value="Нижний Новгород">Нижний Новгород</option>
+                            <option value="any">Загрузка городов...</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small text-muted">Тип жилья</label>
                         <select class="form-select" id="aiType">
-                            <option value="any">Любой</option>
                             <option value="apartment">Квартира</option>
                             <option value="dacha">Дача</option>
                             <option value="room">Комната</option>
                             <option value="cottedzh">Коттедж</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label small text-muted">Бюджет, ₽</label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="aiMinPrice" value="2000" placeholder="от">
                             <input type="number" class="form-control" id="aiMaxPrice" value="10000" placeholder="до">
                         </div>
                     </div>
-                    <div class="col-md-1">
-                        <label class="form-label small text-muted">Гости</label>
-                        <input type="number" class="form-control" id="aiGuests" value="2" min="1" max="10">
-                    </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label small text-muted">&nbsp;</label>
                         <button class="btn btn-danger w-100" id="aiRecommendBtn" style="border-radius:10px;">
                             <i class="bi bi-stars me-1"></i>Подобрать
@@ -239,6 +227,26 @@ if (session_status() === PHP_SESSION_NONE) {
             }
             checkAiStatus();
 
+            // Загружаем список городов для ИИ
+            function loadAiCities() {
+                $.getJSON(API + '/cities', function(data) {
+                    var select = $('#aiCity');
+                    select.empty();
+                    if (data.cities) {
+                        data.cities.forEach(function(city) {
+                            select.append(`<option value="${city}">${city}</option>`);
+                        });
+                    }
+                    // По умолчанию ставим Москву, если она есть
+                    if (select.find('option[value="Москва"]').length) {
+                        select.val('Москва');
+                    }
+                }).fail(function() {
+                    $('#aiCity').html('<option value="any">Ошибка загрузки</option>');
+                });
+            }
+            loadAiCities();
+
             // Обучить модель
             $('#aiTrainBtn').on('click', function() {
                 var btn = $(this);
@@ -278,7 +286,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     amenities: ["wifi", "kitchen"],
                     check_in: today.toISOString().split('T')[0],
                     check_out: nextWeek.toISOString().split('T')[0],
-                    guests: parseInt($('#aiGuests').val()) || 2,
+                    guests: 2,
                     top_n: 5
                 };
 
@@ -299,62 +307,68 @@ if (session_status() === PHP_SESSION_NONE) {
                             return;
                         }
 
-                        // Загружаем данные по каждому рекомендованному объекту
-                        var loadedCount = 0;
-                        var totalToLoad = res.recommendations.length;
+                        // Загружаем данные по каждому рекомендованному объекту (с сохранением порядка)
+                        var fetchPromises = res.recommendations.map(function(rec) {
+                            return $.getJSON(API + '/resources/' + rec.property_id).then(function(item) {
+                                return { rec: rec, item: item };
+                            }).catch(function() {
+                                return { rec: rec, item: null };
+                            });
+                        });
 
-                        $.each(res.recommendations, function(idx, rec) {
-                            $.getJSON(API + '/resources/' + rec.property_id, function(item) {
+                        Promise.all(fetchPromises).then(function(results) {
+                            $('#aiLoading').addClass('d-none');
+                            results.forEach(function(resObj) {
+                                var rec = resObj.rec;
+                                var item = resObj.item;
                                 var scorePct = Math.round(rec.score * 100);
-                                var scoreColor = scorePct >= 70 ? 'success' : scorePct >= 40 ? 'warning' : 'secondary';
-                                var name = $('<div>').text(item.name || 'Объект #' + rec.property_id).html();
-                                var address = $('<div>').text(item.address || item.location || '').html();
-                                var price = Number(item.base_price || 0).toLocaleString('ru-RU');
-                                var imgUrl = item.image_url || '../img/property/metro-plus.png';
+                                var scoreColor = scorePct >= 85 ? 'success' : scorePct >= 75 ? 'primary' : 'info';
+                                
+                                if (item) {
+                                    var name = $('<div>').text(item.name || 'Объект #' + rec.property_id).html();
+                                    var address = $('<div>').text(item.address || item.location || '').html();
+                                    var price = Number(item.base_price || 0).toLocaleString('ru-RU');
+                                    var imgUrl = item.image_url || '../img/property/metro-plus.png';
 
-                                var card = `
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="card border-0 shadow-sm h-100" style="border-radius:14px; cursor:pointer; transition:0.3s;" 
-                                             onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'"
-                                             onclick="window.location='property.php?id=${rec.property_id}'">
-                                            <div class="position-relative">
-                                                <img src="${imgUrl}" class="card-img-top" alt="${name}" 
-                                                     style="height:180px; object-fit:cover; border-radius:14px 14px 0 0;"
-                                                     onerror="this.src='../img/property/metro-plus.png'">
-                                                <span class="badge bg-${scoreColor} position-absolute top-0 end-0 m-2" style="font-size:0.85rem;">
-                                                    <i class="bi bi-cpu me-1"></i>${scorePct}% совпадение
-                                                </span>
-                                            </div>
-                                            <div class="card-body p-3">
-                                                <h6 class="fw-bold mb-1">${name}</h6>
-                                                <p class="text-muted small mb-2"><i class="bi bi-geo-alt text-danger me-1"></i>${address}</p>
-                                                <div class="fw-bold text-danger">${price} ₽ <span class="text-muted fw-normal small">/ сутки</span></div>
+                                    var card = `
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="card border-0 shadow-sm h-100" style="border-radius:14px; cursor:pointer; transition:0.3s;" 
+                                                 onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'"
+                                                 onclick="window.location='property.php?id=${rec.property_id}'">
+                                                <div class="position-relative">
+                                                    <img src="${imgUrl}" class="card-img-top" alt="${name}" 
+                                                         style="height:180px; object-fit:cover; border-radius:14px 14px 0 0;"
+                                                         onerror="this.src='../img/property/metro-plus.png'">
+                                                    <span class="badge bg-${scoreColor} position-absolute top-0 end-0 m-2" style="font-size:0.85rem; backdrop-filter:blur(4px); background:rgba(25,135,84,0.85) !important;">
+                                                        <i class="bi bi-cpu me-1"></i>${scorePct}% совпадение
+                                                    </span>
+                                                </div>
+                                                <div class="card-body p-3">
+                                                    <h6 class="fw-bold mb-1">${name}</h6>
+                                                    <p class="text-muted small mb-2 text-truncate"><i class="bi bi-geo-alt text-danger me-1"></i>${address}</p>
+                                                    <div class="fw-bold text-danger">${price} ₽ <span class="text-muted fw-normal small">/ сутки</span></div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                `;
-                                $('#aiCards').append(card);
-                            }).fail(function() {
-                                // Объект не найден в БД — показываем ID
-                                var scorePct = Math.round(rec.score * 100);
-                                var card = `
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="card border-0 bg-light h-100" style="border-radius:14px;">
-                                            <div class="card-body p-3 text-center text-muted">
-                                                <i class="bi bi-building" style="font-size:2rem;"></i>
-                                                <p class="mt-2 mb-1 fw-medium">Объект #${rec.property_id}</p>
-                                                <span class="badge bg-secondary">${scorePct}%</span>
+                                    `;
+                                    $('#aiCards').append(card);
+                                } else {
+                                    // Объект не найден в БД — показываем заглушку
+                                    var card = `
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="card border-0 bg-light h-100" style="border-radius:14px;">
+                                                <div class="card-body p-3 text-center text-muted">
+                                                    <i class="bi bi-building" style="font-size:2rem;"></i>
+                                                    <p class="mt-2 mb-1 fw-medium">Объект #${rec.property_id}</p>
+                                                    <span class="badge bg-secondary">${scorePct}%</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                `;
-                                $('#aiCards').append(card);
-                            }).always(function() {
-                                loadedCount++;
-                                if (loadedCount >= totalToLoad) {
-                                    $('#aiCards').removeClass('d-none');
+                                    `;
+                                    $('#aiCards').append(card);
                                 }
                             });
+                            $('#aiCards').removeClass('d-none');
                         });
                     },
                     error: function(xhr) {

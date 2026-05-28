@@ -67,15 +67,10 @@ $(document).ready(function () {
         if ($navDropdown.length) {
             $navDropdown.empty();
             $.each(cities, function (i, city) {
-                $navDropdown.append('<li><a class="dropdown-item" href="#" data-city="' + city + '">' + city + '</a></li>');
+                $navDropdown.append('<li><a class="dropdown-item" href="filter.php?city=' + encodeURIComponent(city) + '" data-city="' + city + '">' + city + '</a></li>');
             });
-            $navDropdown.find('.dropdown-item').on('click', function (e) {
-                e.preventDefault();
-                var selectedCity = $(this).data('city');
-                $('#selectedCity').text(selectedCity);
-                $('#citySelector').val(selectedCity);
-                $('#cityHint').text('Город выбран');
-            });
+            // Мы не делаем e.preventDefault() для навигационного меню, 
+            // чтобы переход на filter.php сработал автоматически.
         }
 
         // Обновляем список в поисковой форме

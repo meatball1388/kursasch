@@ -13,14 +13,27 @@ MODEL_PATH = Path("model.pkl")
 ENCODERS_PATH = Path("encoders.pkl")
 DATA_PATH = Path("training_data.csv")
 
-CITIES = ["Москва", "Санкт-Петербург", "Казань", "Сочи", "Екатеринбург", "Новосибирск", "Краснодар", "Нижний Новгород"]
-PROPERTY_TYPES = ["apartment", "house", "room", "villa"]
+CITIES = ["Москва", "Санкт-Петербург", "Казань", "Сочи", "Екатеринбург", "Новосибирск", "Краснодар", "Нижний Новгород", "Воронеж"]
+PROPERTY_TYPES = ["apartment", "house", "room", "villa", "dacha", "cottedzh"]
 AMENITIES_POOL = ["wifi", "parking", "kitchen", "pool", "gym", "ac", "balcony", "washer", "tv", "pets"]
 
+# DB type to Model type mapping
+db_to_model_type = {
+    "dacha": "house",
+    "house": "house",
+    "cottedzh": "villa",
+    "villa": "villa",
+    "apartment": "apartment",
+    "room": "room",
+}
 
 def _build_features(df: pd.DataFrame, city_enc: LabelEncoder, type_enc: LabelEncoder) -> np.ndarray:
-    city_col = city_enc.transform(df["city"].fillna("Москва"))
-    type_col = type_enc.transform(df["property_type"].fillna("apartment"))
+    # Ensure all cities in df are known to encoder or fallback
+    df["city_for_enc"] = df["city"].apply(lambda x: x if x in city_enc.classes_ else (city_enc.classes_[0] if len(city_enc.classes_) > 0 else "Москва"))
+    df["type_for_enc"] = df["property_type"].apply(lambda x: x if x in type_enc.classes_ else (type_enc.classes_[0] if len(type_enc.classes_) > 0 else "apartment"))
+    
+    city_col = city_enc.transform(df["city_for_enc"])
+    type_col = type_enc.transform(df["type_for_enc"])
     price_range = (df["max_price"] - df["min_price"]).fillna(0).values
     rooms = df["rooms"].fillna(0).values
     guests = df["guests"].fillna(1).values
@@ -119,14 +132,6 @@ def get_recommendations(
         candidates = [{"id": pid} for pid in candidate_ids]
 
     results = []
-    
-    # DB type to Model type mapping
-    db_to_model_type = {
-        "dacha": "house",
-        "cottedzh": "villa",
-        "apartment": "apartment",
-        "room": "room"
-    }
 
     for cand in candidates:
         prop_id = cand["id"]
@@ -134,6 +139,9 @@ def get_recommendations(
         # Use candidate features if available, otherwise use query features
         cand_type = db_to_model_type.get(cand.get("type"), property_type)
         cand_city = cand.get("location", city)
+        
+        # Map user requested type to model type for matching
+        model_property_type = db_to_model_type.get(property_type, property_type)
         
         # Ensure they are within CITIES and PROPERTY_TYPES for encoder
         cand_city = cand_city if cand_city in CITIES else CITIES[0]
@@ -168,13 +176,14 @@ def get_recommendations(
         prob = clf.predict_proba(X)[0][1]
         
         # Add a small score boost if types match perfectly
-        type_match_bonus = 0.15 if cand_type == property_type else 0.0
+        type_match_bonus = 0.15 if cand_type == model_property_type else 0.0
         
-        # Price proximity bonus: better score if closer to user's desired budget
-        price_diff_min = abs(cand_price - min_price)
-        price_diff_max = abs(cand_price - max_price)
-        avg_diff_pct = (price_diff_min + price_diff_max) / (max_price - min_price + 1) / 2
-        price_bonus = max(0, 0.2 * (1 - avg_diff_pct))
+        # Price proximity bonus: better score if closer to user's desired budget center
+        ideal_price = (min_price + max_price) / 2
+        price_range = abs(max_price - min_price) + 1
+        price_diff = abs(cand_price - ideal_price)
+        # Bonus is higher when price is closer to ideal_price (center of range)
+        price_bonus = max(0, 0.2 * (1 - (price_diff / (price_range / 2 + 1))))
 
         # Base score from model prob + bonuses
         # We also rescale prob slightly to be more 'positive' (e.g. 0.1 -> 0.5)

@@ -105,6 +105,7 @@ session_start();
                 ? `<button class="btn btn-outline-danger w-100 mb-2 btn-cancel" data-id="${b.id}"><i class="bi bi-x-circle me-1"></i>Отменить</button>`
                 : '';
             const commentStr = b.comment ? b.comment.replace(/"/g, '&quot;') : '';
+            const passportStr = b.passport ? b.passport.replace(/"/g, '&quot;') : '';
             
             let payBtn = '';
             if (active && b.status === 'CREATED') {
@@ -135,7 +136,8 @@ session_start();
                             <button class="btn btn-outline-secondary w-100 btn-details"
                                 data-name="${name}" data-addr="${address}"
                                 data-from="${dateFrom}" data-to="${dateTo}"
-                                data-price="${price}" data-status="${b.status}" data-id="${b.id}" data-comment="${commentStr}">
+                                data-price="${price}" data-status="${b.status}" data-id="${b.id}" 
+                                data-comment="${commentStr}" data-passport="${passportStr}">
                                 <i class="bi bi-file-text me-1"></i>Детали
                             </button>
                         </div>
@@ -228,16 +230,19 @@ session_start();
         // Детали
         $(document).on('click', '.btn-details', function() {
             const d = $(this).data();
-            const wishesRow = d.comment ? `<tr><td class="text-muted">Пожелания</td><td class="fst-italic">${d.comment}</td></tr>` : '';
+            const wishesRow = d.comment ? `<tr><td class="text-muted small">Пожелания</td><td class="fst-italic small">${d.comment}</td></tr>` : '';
+            const passportRow = d.passport ? `<tr><td class="text-muted small">Паспорт</td><td class="small">${d.passport}</td></tr>` : '';
+            
             $('#detailsModalBody').html(`
-                <table class="table table-borderless">
-                    <tr><td class="text-muted">Объект</td><td class="fw-bold">${d.name}</td></tr>
-                    <tr><td class="text-muted">Адрес</td><td>${d.addr}</td></tr>
-                    <tr><td class="text-muted">Заезд</td><td>${d.from}</td></tr>
-                    <tr><td class="text-muted">Выезд</td><td>${d.to}</td></tr>
-                    <tr><td class="text-muted">Стоимость</td><td class="fw-bold text-danger">${d.price} ₽</td></tr>
-                    <tr><td class="text-muted">Статус</td><td>${d.status}</td></tr>
-                    <tr><td class="text-muted">№ брони</td><td class="font-monospace">#${d.id}</td></tr>
+                <table class="table table-borderless align-middle mb-0">
+                    <tr><td class="text-muted small" style="width: 35%;">Объект</td><td class="fw-bold">${d.name}</td></tr>
+                    <tr><td class="text-muted small">Адрес</td><td class="small">${d.addr}</td></tr>
+                    <tr><td class="text-muted small">Заезд</td><td class="small">${d.from}</td></tr>
+                    <tr><td class="text-muted small">Выезд</td><td class="small">${d.to}</td></tr>
+                    <tr><td class="text-muted small">Стоимость</td><td class="fw-bold text-danger">${d.price} ₽</td></tr>
+                    <tr><td class="text-muted small">Статус</td><td><span class="badge bg-light text-dark border">${d.status}</span></td></tr>
+                    <tr><td class="text-muted small">№ брони</td><td class="font-monospace small">#${d.id}</td></tr>
+                    ${passportRow}
                     ${wishesRow}
                 </table>
             `);

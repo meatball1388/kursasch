@@ -46,29 +46,35 @@ async def recommend(request: Request, body: RecommendRequest):
             "cottedzh": "cottedzh",
             "any": "any"
         }
-        db_type = type_map.get(body.property_type, body.property_type) # Fallback to raw value if not mapped
-        print(f"DEBUG AI: Mapped db_type='{db_type}'")
+        db_type = type_map.get(body.property_type, body.property_type)
+        print(f"DEBUG AI: Mapped db_type='{db_type}', city='{body.city}'")
 
         async with pool.acquire() as con:
-            # Строгая фильтрация по цене, тип опционален
-            if db_type == "any":
-                rows = await con.fetch(
-                    """SELECT id, name, type, location, base_price, area, guests, bedrooms, amenities 
-                       FROM resources
-                       WHERE is_active = TRUE AND base_price >= $1 AND base_price <= $2""",
-                    body.min_price, body.max_price
-                )
-            else:
-                rows = await con.fetch(
-                    """SELECT id, name, type, location, base_price, area, guests, bedrooms, amenities 
-                       FROM resources
-                       WHERE is_active = TRUE AND type = $1 AND base_price >= $2 AND base_price <= $3""",
-                    db_type, body.min_price, body.max_price
-                )
+            # Строгая фильтрация по цене и городу
+            conditions = ["is_active = TRUE", "base_price >= $1", "base_price <= $2"]
+            params = [body.min_price, body.max_price]
+
+            if db_type != "any":
+                conditions.append(f"type = ${len(params) + 1}")
+                params.append(db_type)
+
+            if body.city and body.city != "any":
+                # Специальная обработка для Москвы, чтобы включать Московскую область
+                if "Москва" in body.city:
+                    conditions.append(f"(location ILIKE ${len(params) + 1} OR location ILIKE 'Московская%')")
+                    params.append(f"%{body.city}%")
+                else:
+                    conditions.append(f"location ILIKE ${len(params) + 1}")
+                    params.append(f"%{body.city}%")
+
+            query = f"""SELECT id, name, type, location, base_price, area, guests, bedrooms, amenities
+                        FROM resources
+                        WHERE {" AND ".join(conditions)}"""
+
+            rows = await con.fetch(query, *params)
 
             if not rows:
                 return {"status": "success", "recommendations": []}
-
             candidates = [dict(r) for r in rows]
 
             # Rank candidates using AI model
@@ -85,7 +91,8 @@ async def recommend(request: Request, body: RecommendRequest):
                 guests=body.guests,
                 candidates=candidates,
                 top_n=body.top_n,
-            )        return {"status": "success", "recommendations": results}
+            )
+        return {"status": "success", "recommendations": results}
     except FileNotFoundError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

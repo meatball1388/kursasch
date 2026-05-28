@@ -44,18 +44,6 @@
                     <!-- Сюда будет загружен список городов из базы -->
                 </ul>
             </div>
-            <div class="dropdown">
-                <button
-                    class="btn btn-link text-white text-decoration-none dropdown-toggle d-flex align-items-center gap-2"
-                    type="button" data-bs-toggle="dropdown"><img src="https://flagcdn.com/w20/ru.png" alt="RU"
-                        width="20"><span>RUB</span></button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#"><img src="https://flagcdn.com/w20/ru.png" alt="RU" width="20"
-                                class="me-2"> RUB</a></li>
-                    <li><a class="dropdown-item" href="#"><img src="https://flagcdn.com/w20/us.png" alt="US" width="20"
-                                class="me-2"> USD</a></li>
-                </ul>
-            </div>
             <button type="button" class="btn btn-link text-white text-decoration-none p-0 border-0"
                 data-bs-toggle="modal" data-bs-target="#supportModal" title="Поддержка"><i
                     class="bi bi-headset fs-5"></i></button>

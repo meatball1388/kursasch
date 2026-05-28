@@ -132,7 +132,10 @@ if (session_status() === PHP_SESSION_NONE) {
                                                 class="text-danger">*</span></label><input type="text"
                                             class="form-control" id="guestPhone" required></div>
                                     <div class="col-md-6"><label for="guestPassport" class="form-label">Серия и номер
-                                            паспорта</label><input type="text" class="form-control" id="guestPassport">
+                                            паспорта <span class="text-muted small">(10 цифр)</span></label>
+                                            <input type="text" class="form-control" id="guestPassport" 
+                                            placeholder="1234 567890" maxlength="11" minlength="11" pattern="\d{4} \d{6}"
+                                            oninput="let v = this.value.replace(/[^0-9]/g, ''); if (v.length > 4) v = v.slice(0,4) + ' ' + v.slice(4,10); this.value = v;">
                                     </div>
                                 </div>
                             </div>
