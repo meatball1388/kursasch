@@ -55,10 +55,25 @@ if (session_status() === PHP_SESSION_NONE) {
     <script>
     $(function() {
         let isGridView = true;
+        const currentUserId = window.phpSessionUser ? window.phpSessionUser.id : null;
 
-        function getFavorites() {
-            try { return JSON.parse(localStorage.getItem('bronic_favorites') || '[]'); }
-            catch(e) { return []; }
+        function getFavorites(callback) {
+            if (!currentUserId) {
+                try { 
+                    const local = JSON.parse(localStorage.getItem('bronic_favorites') || '[]');
+                    if (callback) callback(local);
+                } catch(e) { if (callback) callback([]); }
+                return;
+            }
+
+            $.ajax({
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/favorites?user_id=' + currentUserId,
+                method: 'GET',
+                success: function(res) {
+                    if (callback) callback(res.results || []);
+                },
+                error: function() { if (callback) callback([]); }
+            });
         }
 
         function buildCard(item, gridMode) {
@@ -71,7 +86,7 @@ if (session_status() === PHP_SESSION_NONE) {
             if (!gridMode) {
                 return `
                 <div class="col-12 fav-item" data-id="${item.id}">
-                    <div class="card border-0 shadow-sm">
+                    <div class="card border-0 shadow-sm mb-3">
                         <div class="row g-0">
                             <div class="col-md-3 position-relative">
                                 <img src="${img}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" style="min-height:160px;" alt="${item.name}" onerror="${onerr}">
@@ -125,33 +140,22 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function render() {
-            const favs = getFavorites();
-            $('#favoritesCount').text(favs.length);
-            const grid = $('#favoritesGrid');
-            grid.empty();
-
-            if (favs.length === 0) {
-                $('#emptyFavorites').removeClass('d-none');
-                return;
-            }
-            $('#emptyFavorites').addClass('d-none');
-
-            // Подтягиваем свежие image_url из API
-            const promises = favs.map(fav =>
-                $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/resources/' + fav.id)
-                  .then(fresh => ({ ...fav, image_url: fresh.image_url || fav.image_url }))
-                  .catch(() => fav)
-            );
-
-            Promise.all(promises).then(freshFavs => {
-                // Сохраняем обновлённые данные в localStorage
-                localStorage.setItem('bronic_favorites', JSON.stringify(freshFavs));
+            getFavorites(function(favs) {
+                $('#favoritesCount').text(favs.length);
+                const grid = $('#favoritesGrid');
                 grid.empty();
-                freshFavs.forEach(item => grid.append(buildCard(item, isGridView)));
+
+                if (favs.length === 0) {
+                    $('#emptyFavorites').removeClass('d-none');
+                    return;
+                }
+                $('#emptyFavorites').addClass('d-none');
+
+                favs.forEach(item => grid.append(buildCard(item, isGridView)));
             });
         }
 
-        // Переключение вид
+        // Переключение вида
         $('#gridViewBtn').on('click', function() {
             isGridView = true;
             $(this).addClass('active');
@@ -168,9 +172,23 @@ if (session_status() === PHP_SESSION_NONE) {
         // Удаление из избранного
         $(document).on('click', '.btn-remove-fav', function() {
             const id = parseInt($(this).data('id'));
-            let favs = getFavorites().filter(f => f.id !== id);
-            localStorage.setItem('bronic_favorites', JSON.stringify(favs));
-            render();
+            
+            if (!currentUserId) {
+                let favs = [];
+                try { favs = JSON.parse(localStorage.getItem('bronic_favorites') || '[]'); } catch(e){}
+                favs = favs.filter(f => f.id !== id);
+                localStorage.setItem('bronic_favorites', JSON.stringify(favs));
+                render();
+                return;
+            }
+
+            $.ajax({
+                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/favorites/toggle',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ user_id: currentUserId, resource_id: id }),
+                success: function() { render(); }
+            });
         });
 
         render();

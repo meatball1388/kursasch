@@ -173,24 +173,114 @@ $(document).ready(function () {
     }
     updateGuestsSummary();
 
-    // ========== 5. ИЗБРАННОЕ (localStorage) ==========
-    function getFavorites() {
-        try {
-            return JSON.parse(localStorage.getItem('bronic_favorites') || '[]');
-        } catch (e) {
-            return [];
+    // ========== 5. ИЗБРАННОЕ (Синхронизация с аккаунтом) ==========
+    function getCurrentUserId() {
+        return (window.phpSessionUser && window.phpSessionUser.id) ? window.phpSessionUser.id : null;
+    }
+
+    // Кэш избранного для быстрой отрисовки
+    window.cachedFavorites = [];
+
+    function loadFavorites() {
+        return new Promise((resolve) => {
+            const userId = getCurrentUserId();
+            if (!userId) {
+                console.log('Favorites Sync: Using localStorage (Guest)');
+                try {
+                    window.cachedFavorites = JSON.parse(localStorage.getItem('bronic_favorites') || '[]');
+                } catch (e) {
+                    window.cachedFavorites = [];
+                }
+                resolve(window.cachedFavorites);
+                return;
+            }
+
+            console.log('Favorites Sync: Fetching from API for user', userId);
+            $.ajax({
+                url: API_URL + '/favorites?user_id=' + userId,
+                method: 'GET',
+                success: function(res) {
+                    window.cachedFavorites = res.results || [];
+                    console.log('Favorites Sync: Loaded from API:', window.cachedFavorites);
+                    
+                    // МИГРАЦИЯ: если в localStorage есть "гостевые" избранные, переносим их в аккаунт
+                    let local = [];
+                    try { local = JSON.parse(localStorage.getItem('bronic_favorites') || '[]'); } catch(e){}
+                    if (local.length > 0) {
+                        console.log('Favorites Sync: Migrating local favorites to account...');
+                        const migratePromises = local.map(item => {
+                            return $.ajax({
+                                url: API_URL + '/favorites/toggle',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({ user_id: userId, resource_id: item.id })
+                            });
+                        });
+                        Promise.all(migratePromises).then(() => {
+                            localStorage.removeItem('bronic_favorites');
+                            // Перезагружаем после миграции
+                            $.get(API_URL + '/favorites?user_id=' + userId, function(r) {
+                                window.cachedFavorites = r.results || [];
+                                resolve(window.cachedFavorites);
+                            });
+                        });
+                    } else {
+                        resolve(window.cachedFavorites);
+                    }
+                },
+                error: function() {
+                    window.cachedFavorites = [];
+                    resolve([]);
+                }
+            });
+        });
+    }
+
+    function toggleFavorite(item, $btn) {
+        const userId = getCurrentUserId();
+        if (!userId) {
+            // Если не залогинен - по старинке в localStorage
+            let favs = [];
+            try { favs = JSON.parse(localStorage.getItem('bronic_favorites') || '[]'); } catch(e){}
+            const idx = favs.findIndex(f => String(f.id) === String(item.id));
+            
+            if (idx >= 0) {
+                favs.splice(idx, 1);
+                $btn.find('i').removeClass('bi-heart-fill text-danger').addClass('bi-heart');
+            } else {
+                favs.push(item);
+                $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
+            }
+            localStorage.setItem('bronic_favorites', JSON.stringify(favs));
+            window.cachedFavorites = favs;
+            return;
         }
+
+        // Если залогинен - через API
+        $.ajax({
+            url: API_URL + '/favorites/toggle',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ user_id: userId, resource_id: item.id }),
+            success: function(res) {
+                if (res.status === 'added') {
+                    $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
+                    $btn.attr('title', 'В избранном');
+                } else {
+                    $btn.find('i').removeClass('bi-heart-fill text-danger').addClass('bi-heart');
+                    $btn.attr('title', 'Добавить в избранное');
+                }
+                // Обновляем кэш
+                loadFavorites();
+            }
+        });
     }
 
-    function saveFavorites(arr) {
-        localStorage.setItem('bronic_favorites', JSON.stringify(arr));
-    }
-
-    function syncFavoriteIcons() {
-        var favIds = getFavorites().map(function (f) { return f.id; });
+    window.syncFavoriteIcons = function() {
+        const favIds = window.cachedFavorites.map(f => parseInt(f.id));
         $('.btn-favorite').each(function () {
-            var $btn = $(this);
-            var id = $btn.data('item-id') || $btn.closest('[data-id]').data('id');
+            const $btn = $(this);
+            const id = parseInt($btn.data('item-id') || $btn.closest('[data-id]').data('id'));
             if (favIds.includes(id)) {
                 $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
                 $btn.attr('title', 'В избранном');
@@ -223,7 +313,12 @@ $(document).ready(function () {
         }
     });
 
-    // ========== 6. ИЗБРАННОЕ ==========
+    // Инициализация избранного
+    loadFavorites().then(() => {
+        window.syncFavoriteIcons();
+    });
+
+    // ========== 6. ИЗБРАННОЕ (Обработка клика) ==========
     $(document).on('click', '.btn-favorite', function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -249,20 +344,8 @@ $(document).ready(function () {
         }
 
         if (!item || !item.id) return;
-
-        var favs = getFavorites();
-        var existingIndex = favs.findIndex(function (f) { return String(f.id) === String(item.id); });
-
-        if (existingIndex >= 0) {
-            favs.splice(existingIndex, 1);
-            $btn.find('i').removeClass('bi-heart-fill text-danger').addClass('bi-heart');
-            $btn.attr('title', 'Добавить в избранное');
-        } else {
-            favs.push(item);
-            $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
-            $btn.attr('title', 'В избранном');
-        }
-        saveFavorites(favs);
+        
+        toggleFavorite(item, $btn);
     });
 
     // ========== 6. ПОКАЗАТЬ ТЕЛЕФОН ==========
@@ -415,8 +498,8 @@ $(document).ready(function () {
             'cottedzh': 'Коттедж'
         };
 
-        var favs = getFavorites();
-        var favIds = favs.map(function (f) { return f.id; });
+        var favs = window.cachedFavorites || [];
+        var favIds = favs.map(function (f) { return parseInt(f.id); });
 
         $.each(items, function (index, item) {
             var typeName = typeNames[item.type] || 'Недвижимость';
@@ -478,6 +561,8 @@ $(document).ready(function () {
                 </div>`;
             $container.append(cardHtml);
         });
+        
+        window.syncFavoriteIcons();
     }
 
     function escapeHtml(str) {

@@ -112,7 +112,9 @@ if (session_status() === PHP_SESSION_NONE) {
                                 email: response.email,
                                 name: response.name,
                                 surname: response.surname,
-                                role: response.role
+                                role: response.role,
+                                phone: response.phone,
+                                passport: response.passport
                             }),
                             success: function() {
                                 console.log('session');

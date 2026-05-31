@@ -1,24 +1,19 @@
 <?php
 session_start();
-header('Content-Type: application/json');
 
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
+$data = json_decode(file_get_contents('php://input'), true);
 
-// echo json_encode($data);
-// exit;
-
-if ($data && isset($data['email'])) {
+if ($data && isset($data['id'])) {
     $_SESSION['user'] = [
-        'id' => $data['id'] ?? null,
-        'email' => $data['email'],
+        'logged_in' => true,
+        'id' => $data['id'],
+        'email' => $data['email'] ?? '',
         'name' => $data['name'] ?? '',
         'surname' => $data['surname'] ?? '',
         'role' => $data['role'] ?? 'user',
-        'logged_in' => true,
-        'login_time' => time()
+        'phone' => $data['phone'] ?? '',
+        'passport' => $data['passport'] ?? ''
     ];
-    // echo json_encode($_SESSION);
     echo json_encode(['success' => true]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid data']);

@@ -1,4 +1,7 @@
 <!-- Дополнительные стили и скрипты, если нужны -->
+<script>
+window.phpSessionUser = <?php echo isset($_SESSION['user']) ? json_encode($_SESSION['user']) : 'null'; ?>;
+</script>
 <style>
 .container,
 .container-fluid,

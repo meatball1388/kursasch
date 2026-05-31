@@ -95,6 +95,7 @@ session_start();
         }
 
         function buildCard(b, active) {
+            console.log('Building card for booking:', b);
             const name = b.resource_name || `Объект #${b.resource_id}`;
             const address = b.address || b.location || '';
             const img = b.image_url || '../img/property/metro-plus.png';
@@ -137,7 +138,8 @@ session_start();
                                 data-name="${name}" data-addr="${address}"
                                 data-from="${dateFrom}" data-to="${dateTo}"
                                 data-price="${price}" data-status="${b.status}" data-id="${b.id}" 
-                                data-comment="${commentStr}" data-passport="${passportStr}">
+                                data-comment="${commentStr}" data-passport="${passportStr}"
+                                data-adults="${b.adults || 0}" data-children="${b.children || 0}">
                                 <i class="bi bi-file-text me-1"></i>Детали
                             </button>
                         </div>
@@ -229,22 +231,58 @@ session_start();
 
         // Детали
         $(document).on('click', '.btn-details', function() {
-            const d = $(this).data();
-            const wishesRow = d.comment ? `<tr><td class="text-muted small">Пожелания</td><td class="fst-italic small">${d.comment}</td></tr>` : '';
-            const passportRow = d.passport ? `<tr><td class="text-muted small">Паспорт</td><td class="small">${d.passport}</td></tr>` : '';
+            const $btn = $(this);
+            const d = {
+                id: $btn.attr('data-id'),
+                name: $btn.attr('data-name'),
+                addr: $btn.attr('data-addr'),
+                from: $btn.attr('data-from'),
+                to: $btn.attr('data-to'),
+                price: $btn.attr('data-price'),
+                status: $btn.attr('data-status'),
+                comment: $btn.attr('data-comment'),
+                passport: $btn.attr('data-passport'),
+                adults: $btn.attr('data-adults') || 0,
+                children: $btn.attr('data-children') || 0
+            };
             
             $('#detailsModalBody').html(`
-                <table class="table table-borderless align-middle mb-0">
-                    <tr><td class="text-muted small" style="width: 35%;">Объект</td><td class="fw-bold">${d.name}</td></tr>
-                    <tr><td class="text-muted small">Адрес</td><td class="small">${d.addr}</td></tr>
-                    <tr><td class="text-muted small">Заезд</td><td class="small">${d.from}</td></tr>
-                    <tr><td class="text-muted small">Выезд</td><td class="small">${d.to}</td></tr>
-                    <tr><td class="text-muted small">Стоимость</td><td class="fw-bold text-danger">${d.price} ₽</td></tr>
-                    <tr><td class="text-muted small">Статус</td><td><span class="badge bg-light text-dark border">${d.status}</span></td></tr>
-                    <tr><td class="text-muted small">№ брони</td><td class="font-monospace small">#${d.id}</td></tr>
-                    ${passportRow}
-                    ${wishesRow}
-                </table>
+                <div class="mb-4">
+                    <h6 class="fw-bold small text-muted text-uppercase mb-3">Объект и даты</h6>
+                    <table class="table table-borderless align-middle mb-0">
+                        <tr><td class="text-muted small" style="width: 35%;">Название</td><td class="fw-bold">${d.name}</td></tr>
+                        <tr><td class="text-muted small">Адрес</td><td class="small">${d.addr}</td></tr>
+                        <tr><td class="text-muted small">Заезд</td><td class="small">${d.from}</td></tr>
+                        <tr><td class="text-muted small">Выезд</td><td class="small">${d.to}</td></tr>
+                    </table>
+                </div>
+
+                <hr class="my-3 opacity-10">
+
+                <div class="mb-4">
+                    <h6 class="fw-bold small text-muted text-uppercase mb-3">Детали заказа</h6>
+                    <table class="table table-borderless align-middle mb-0">
+                        <tr><td class="text-muted small" style="width: 35%;">Стоимость</td><td class="fw-bold text-danger fs-5">${d.price} ₽</td></tr>
+                        <tr><td class="text-muted small">Статус</td><td>${statusBadge(d.status)}</td></tr>
+                        <tr><td class="text-muted small">№ брони</td><td class="font-monospace small">#${d.id}</td></tr>
+                    </table>
+                </div>
+
+                <hr class="my-3 opacity-10">
+
+                <div class="mb-4">
+                    <h6 class="fw-bold small text-muted text-uppercase mb-3">Информация о гостях</h6>
+                    <div class="d-flex gap-4 mb-3">
+                        <div><span class="text-muted small">Взрослых:</span> <span class="fw-bold">${d.adults}</span></div>
+                        <div><span class="text-muted small">Детей:</span> <span class="fw-bold">${d.children}</span></div>
+                    </div>
+                    ${d.passport ? `<div><span class="text-muted small d-block">Паспорт:</span> <span class="small font-monospace">${d.passport}</span></div>` : ''}
+                </div>
+
+                <div class="p-3 bg-light rounded-3">
+                    <h6 class="fw-bold small text-muted text-uppercase mb-2">Ваши пожелания</h6>
+                    <p class="mb-0 fst-italic text-dark small">${d.comment || 'Вы не оставили особых пожеланий'}</p>
+                </div>
             `);
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
         });

@@ -12,6 +12,13 @@ import json
 import shutil
 from yookassa import Configuration, Payment as YooPayment
 
+try:
+    from cryptography.fernet import Fernet
+    HAS_CRYPTO = True
+except ImportError:
+    HAS_CRYPTO = False
+    print("ВНИМАНИЕ: Библиотека cryptography не установлена. Шифрование паспортов будет недоступно.")
+
 '''
 API бэкенд для PHP-фронта BRONIC.RU
 БД: PostgreSQL, таблицы: users, resources, bookings, payments, messages, services
@@ -28,6 +35,34 @@ else:
 DB_URL = os.getenv("DB_URL")
 if not DB_URL:
     print("ВНИМАНИЕ: Переменная DB_URL не найдена в окружении!")
+
+# Настройка шифрования паспортов
+cipher_suite = None
+if HAS_CRYPTO:
+    PASSPORT_KEY = os.getenv("PASSPORT_ENCRYPTION_KEY")
+    if not PASSPORT_KEY:
+        # Генерируем временный ключ, если его нет в .env (не рекомендуется для продакшена)
+        print("ВНИМАНИЕ: PASSPORT_ENCRYPTION_KEY не найден. Генерация временного ключа.")
+        PASSPORT_KEY = Fernet.generate_key().decode()
+    try:
+        cipher_suite = Fernet(PASSPORT_KEY.encode())
+    except Exception as e:
+        print(f"ОШИБКА инициализации шифрования: {e}")
+
+def encrypt_data(data: str) -> str:
+    if not data or not cipher_suite: return data or ""
+    try:
+        return cipher_suite.encrypt(data.encode()).decode()
+    except Exception:
+        return data
+
+def decrypt_data(token: str) -> str:
+    if not token or not cipher_suite: return token or ""
+    try:
+        return cipher_suite.decrypt(token.encode()).decode()
+    except Exception:
+        # Если это не зашифрованная строка (например, старые данные), возвращаем как есть
+        return token
 
 # Настройка ЮKassa
 shop_id = (os.getenv("YOOKASSA_SHOP_ID") or "").strip()
@@ -110,6 +145,44 @@ async def lifespan(app: FastAPI):
         if check_booking_comment == 0:
             print("Миграция: Добавление колонки comment в таблицу bookings...")
             await con.execute("ALTER TABLE bookings ADD COLUMN comment TEXT;")
+
+        # 5. Проверка колонки passport в bookings
+        check_booking_passport = await con.fetchval("""
+            SELECT count(*) FROM information_schema.columns 
+            WHERE table_name='bookings' AND column_name='passport';
+        """)
+        if check_booking_passport == 0:
+            print("Миграция: Добавление колонки passport в таблицу bookings...")
+            await con.execute("ALTER TABLE bookings ADD COLUMN passport TEXT;")
+            
+        # 7. Проверка колонок в users (phone, passport)
+        user_cols = {
+            "phone": "VARCHAR(50)",
+            "passport": "TEXT"
+        }
+        for col, col_def in user_cols.items():
+            check_user = await con.fetchval(f"""
+                SELECT count(*) FROM information_schema.columns 
+                WHERE table_name='users' AND column_name='{col}';
+            """)
+            if check_user == 0:
+                print(f"Миграция: Добавление колонки {col} в таблицу users...")
+                await con.execute(f"ALTER TABLE users ADD COLUMN {col} {col_def};")
+
+        # 8. Проверка таблицы favorites
+        check_favs = await con.fetchval("""
+            SELECT count(*) FROM information_schema.tables WHERE table_name='favorites';
+        """)
+        if check_favs == 0:
+            print("Миграция: Создание таблицы favorites...")
+            await con.execute("""
+                CREATE TABLE favorites (
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    resource_id INTEGER REFERENCES resources(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, resource_id)
+                );
+            """)
             
         print("База данных актуальна.")
 
@@ -331,7 +404,7 @@ async def check_login(request: Request):
 
     async with pool.acquire() as con:
         result = await con.fetch(
-            "SELECT id, email, password_hash, role, name, surname FROM users WHERE email = $1",
+            "SELECT id, email, password_hash, role, name, surname, phone, passport FROM users WHERE email = $1",
             data["email"]
         )
 
@@ -345,22 +418,136 @@ async def check_login(request: Request):
 
         try:
             if bcrypt.checkpw(data["password"].encode("utf8"), stored_hash.encode("utf8")):
+                # Расшифровываем паспорт для сессии если есть
+                passport = decrypt_data(result[0].get("passport", ""))
+                
                 return {
                     "success": "true",
                     "id": result[0]["id"],
                     "redirect": "index.php",
                     "message": "вход успешен",
-                    "id": result[0]["id"],
                     "role": result[0]["role"],
                     "name": result[0].get("name", ""),
                     "surname": result[0].get("surname", ""),
-                    "email": result[0]["email"]
+                    "email": result[0]["email"],
+                    "phone": result[0].get("phone", ""),
+                    "passport": passport
                 }
             else:
                 return {"message": "неправильный логин или пароль"}
         except Exception as e:
             print(f"Bcrypt check error: {e}")
             return {"message": "неправильный логин или пароль"}
+
+
+# ==============================================================
+# ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ (GET /users/me, POST /users/update)
+# ==============================================================
+
+@app.get("/users/me")
+async def get_my_profile(user_id: int, request: Request):
+    pool = request.app.state.pool
+    async with pool.acquire() as con:
+        row = await con.fetchrow(
+            "SELECT id, email, name, surname, phone, passport, role FROM users WHERE id = $1",
+            user_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        d = dict(row)
+        if d.get("passport"):
+            d["passport"] = decrypt_data(d["passport"])
+        return d
+
+@app.post("/users/update")
+async def update_profile(request: Request):
+    pool = request.app.state.pool
+    data = await request.json()
+    user_id = data.get("id")
+    if not user_id:
+        return {"error": "user_id required"}
+    
+    fields = []
+    values = []
+    i = 1
+    
+    for key in ["name", "surname", "phone", "passport"]:
+        if key in data:
+            val = data[key]
+            if key == "passport":
+                val = encrypt_data(val)
+            fields.append(f"{key} = ${i}")
+            values.append(val)
+            i += 1
+            
+    if not fields:
+        return {"message": "no fields to update"}
+        
+    values.append(int(user_id))
+    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${i}"
+    
+    async with pool.acquire() as con:
+        await con.execute(query, *values)
+        return {"success": True, "message": "Профиль обновлен"}
+
+
+# ==============================================================
+# ИЗБРАННОЕ (GET /favorites, POST /favorites/toggle)
+# ==============================================================
+
+@app.get("/favorites")
+async def get_favorites(user_id: int, request: Request):
+    pool = request.app.state.pool
+    async with pool.acquire() as con:
+        rows = await con.fetch(
+            """SELECT r.*, COUNT(rv.id)::int AS review_count,
+                      COALESCE(ROUND(AVG(rv.rating)::numeric, 1), 0)::float AS avg_rating
+               FROM resources r
+               JOIN favorites f ON r.id = f.resource_id
+               LEFT JOIN reviews rv ON rv.resource_id = r.id
+               WHERE f.user_id = $1
+               GROUP BY r.id""",
+            user_id
+        )
+        results = []
+        for row in rows:
+            d = dict(row)
+            d["image_url"] = map_image_url(d.get("image_url"), d["id"])
+            # Приводим Decimal к float для JSON
+            if d.get("base_price"):
+                d["base_price"] = float(d["base_price"])
+            results.append(d)
+        return {"results": results}
+
+@app.post("/favorites/toggle")
+async def toggle_favorite(request: Request):
+    pool = request.app.state.pool
+    data = await request.json()
+    user_id = data.get("user_id")
+    resource_id = data.get("resource_id")
+    
+    if not user_id or not resource_id:
+        return {"error": "user_id and resource_id required"}
+        
+    async with pool.acquire() as con:
+        exists = await con.fetchval(
+            "SELECT 1 FROM favorites WHERE user_id = $1 AND resource_id = $2",
+            int(user_id), int(resource_id)
+        )
+        
+        if exists:
+            await con.execute(
+                "DELETE FROM favorites WHERE user_id = $1 AND resource_id = $2",
+                int(user_id), int(resource_id)
+            )
+            return {"status": "removed", "success": True}
+        else:
+            await con.execute(
+                "INSERT INTO favorites (user_id, resource_id) VALUES ($1, $2)",
+                int(user_id), int(resource_id)
+            )
+            return {"status": "added", "success": True}
 
 
 # ==============================================================
@@ -462,6 +649,15 @@ async def create_booking(request: Request):
         resource_id = int(data.get("resource_id", 1))
         user_id = int(data.get("user_id", 1))
         comment = data.get("comment", "")
+        adults = int(data.get("adults", 0))
+        children = int(data.get("children", 0))
+        name = data.get("name", "")
+        email = data.get("email", "")
+        phone = data.get("phone", "")
+        passport = data.get("passport", "")
+        
+        # Шифруем паспортные данные
+        encrypted_passport = encrypt_data(passport)
 
         async with pool.acquire() as con:
             # Проверяем доступность... (unchanged)
@@ -489,10 +685,19 @@ async def create_booking(request: Request):
                     return {"error": "Объект уже забронирован на эти даты", "success": False}
 
             result = await con.fetchrow(
-                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment)
-                   VALUES ($1, $2, $3, $4, 'CREATED', $5, $6) RETURNING id""",
-                user_id, resource_id, start_time, end_time, price, comment
+                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment, adults, children, name, email, phone, passport)
+                   VALUES ($1, $2, $3, $4, 'CREATED', $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
+                user_id, resource_id, start_time, end_time, price, comment, adults, children, name, email, phone, encrypted_passport
             )
+            
+            # Авто-обновление профиля пользователя (сохранение "по аккаунту")
+            await con.execute(
+                """UPDATE users SET phone = COALESCE(NULLIF($1, ''), phone), 
+                                   passport = COALESCE(NULLIF($2, ''), passport)
+                   WHERE id = $3""",
+                phone, encrypted_passport, user_id
+            )
+            
             return {"id": result["id"], "message": "Бронирование успешно создано", "success": True}
     except Exception as e:
         import traceback
@@ -537,6 +742,7 @@ async def admin_api(request: Request):
                     rows = await con.fetch(
                         """SELECT b.id, b.user_id, b.resource_id,
                                   b.start_time, b.end_time, b.status, b.price,
+                                  b.comment, b.adults, b.children, b.name, b.email, b.phone, b.passport,
                                   u.email as user_email,
                                   COALESCE(u.name || ' ' || u.surname, u.email) as user_name,
                                   r.name as resource_name
@@ -551,6 +757,10 @@ async def admin_api(request: Request):
                 results = []
                 for row in rows:
                     d = dict(row)
+                    # Расшифровка паспорта если есть
+                    if table == "bookings" and d.get("passport"):
+                        d["passport"] = decrypt_data(d["passport"])
+                    
                     for k, v in d.items():
                         if hasattr(v, 'isoformat'):
                             d[k] = v.isoformat()
@@ -725,6 +935,7 @@ async def my_bookings(request: Request, user_id: int):
         # Теперь возвращаем актуальный список
         rows = await con.fetch(
             """SELECT b.id, b.status, b.start_time, b.end_time, b.price, b.created_at,
+                      b.adults, b.children, b.comment, b.passport,
                       r.id as resource_id, r.name as resource_name, r.address, r.location, r.image_url
                FROM bookings b
                JOIN resources r ON b.resource_id = r.id
@@ -735,6 +946,10 @@ async def my_bookings(request: Request, user_id: int):
         results = []
         for row in rows:
             d = dict(row)
+            # Расшифровка паспорта для владельца брони
+            if d.get("passport"):
+                d["passport"] = decrypt_data(d["passport"])
+
             for k, v in d.items():
                 if hasattr(v, 'isoformat'):
                     d[k] = v.isoformat()

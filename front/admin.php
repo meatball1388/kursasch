@@ -406,35 +406,80 @@ $(document).on('click', '.info-btn', function(){
   const item = (cache.bookings||[]).find(i => i.id == id);
   if(!item) return;
   
+  const bc = statusColors[item.status]||'secondary';
   const html = `
-    <div class="mb-3">
-      <div class="fw-bold small text-muted text-uppercase mb-2">Основная информация</div>
-      <table class="table table-sm table-borderless mb-0">
-        <tr><td>Объект:</td><td class="fw-bold">${esc(item.resource_name)}</td></tr>
-        <tr><td>Клиент:</td><td>${esc(item.user_name)} (${esc(item.user_email)})</td></tr>
-        <tr><td>Даты:</td><td>${(item.start_time||'').split('T')[0]} — ${(item.end_time||'').split('T')[0]}</td></tr>
-        <tr><td>Сумма:</td><td class="fw-bold text-danger">${Number(item.price||0).toLocaleString('ru-RU')} ₽</td></tr>
-      </table>
+    <div class="mb-4 text-center">
+      <div class="badge rounded-pill bg-${bc} px-3 py-2 mb-2" style="font-size: 0.9rem;">${item.status}</div>
+      <h5 class="fw-bold mb-0">Бронирование #${item.id}</h5>
+      <p class="text-muted small">от ${(item.created_at||'').replace('T', ' ')}</p>
     </div>
-    <div class="mb-3">
-      <div class="fw-bold small text-muted text-uppercase mb-2">Контактные данные</div>
-      <table class="table table-sm table-borderless mb-0">
-        <tr><td>Имя в брони:</td><td>${esc(item.name||'—')}</td></tr>
-        <tr><td>Телефон:</td><td>${esc(item.phone||'—')}</td></tr>
-        <tr><td>Email:</td><td>${esc(item.email||'—')}</td></tr>
-        <tr><td>Паспорт:</td><td>${esc(item.passport||'—')}</td></tr>
-      </table>
+
+    <div class="mb-4">
+      <div class="d-flex align-items-center mb-3">
+        <div class="bg-light p-2 rounded-3 me-3"><i class="bi bi-house text-danger fs-5"></i></div>
+        <div>
+          <div class="fw-bold">${esc(item.resource_name)}</div>
+          <div class="text-muted small">ID объекта: ${item.resource_id}</div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center mb-3">
+        <div class="bg-light p-2 rounded-3 me-3"><i class="bi bi-calendar-range text-danger fs-5"></i></div>
+        <div>
+          <div class="fw-bold">${(item.start_time||'').split('T')[0]} — ${(item.end_time||'').split('T')[0]}</div>
+          <div class="text-muted small">Период проживания</div>
+        </div>
+      </div>
+      <div class="d-flex align-items-center">
+        <div class="bg-light p-2 rounded-3 me-3"><i class="bi bi-cash-stack text-success fs-5"></i></div>
+        <div>
+          <div class="fw-bold text-danger fs-5">${Number(item.price||0).toLocaleString('ru-RU')} ₽</div>
+          <div class="text-muted small">Полная стоимость</div>
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      <div class="fw-bold small text-muted text-uppercase mb-2">Дополнительно</div>
-      <table class="table table-sm table-borderless mb-0">
-        <tr><td>Взрослых:</td><td>${item.adults||0}</td></tr>
-        <tr><td>Детей:</td><td>${item.children||0}</td></tr>
-        <tr><td>Пожелания:</td><td class="fst-italic">${esc(item.comment||'Нет пожеланий')}</td></tr>
-      </table>
+
+    <hr class="my-4 opacity-10">
+
+    <div class="mb-4">
+      <h6 class="fw-bold small text-muted text-uppercase mb-3">Данные гостя</h6>
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="text-muted small">Имя в брони:</div>
+          <div class="fw-semibold">${esc(item.name || item.user_name || '—')}</div>
+        </div>
+        <div class="col-6">
+          <div class="text-muted small">Телефон:</div>
+          <div class="fw-semibold">${esc(item.phone || '—')}</div>
+        </div>
+        <div class="col-6">
+          <div class="text-muted small">Email:</div>
+          <div class="fw-semibold">${esc(item.email || item.user_email || '—')}</div>
+        </div>
+        <div class="col-6">
+          <div class="text-muted small">Паспорт (зашифрован):</div>
+          <div class="fw-semibold text-break" style="font-family: monospace; font-size: 0.85rem;">${esc(item.passport || '—')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <h6 class="fw-bold small text-muted text-uppercase mb-3">Состав гостей</h6>
+      <div class="d-flex gap-4">
+        <div><span class="text-muted small">Взрослых:</span> <span class="fw-bold">${item.adults||0}</span></div>
+        <div><span class="text-muted small">Детей:</span> <span class="fw-bold">${item.children||0}</span></div>
+      </div>
+    </div>
+
+    <div class="p-3 bg-light rounded-3">
+      <h6 class="fw-bold small text-muted text-uppercase mb-2">Комментарий / Пожелания</h6>
+      <p class="mb-0 fst-italic text-dark" style="font-size: 0.9rem;">${esc(item.comment || 'Пожелания отсутствуют')}</p>
     </div>
   `;
   $('#bookingDetailsBody').html(html);
+  
+  // Увеличиваем модалку для информативности
+  $('#bookingDetailsModal .modal-dialog').addClass('modal-md');
+  
   new bootstrap.Modal(document.getElementById('bookingDetailsModal')).show();
 });
 
