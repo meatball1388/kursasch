@@ -156,10 +156,10 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <div class="form-check"><input class="form-check-input" type="checkbox" id="rulesAgree"
                                         required><label class="form-check-label" for="rulesAgree">Я согласен с <a
                                             href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#rulesModal">правилами бронирования</a></label></div>
-                                <div class="form-check"><input class="form-check-input" type="checkbox"
-                                        id="personalDataAgree" required><label class="form-check-label"
-                                        for="personalDataAgree">Я согласен на обработку <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#personalDataModal">персональных
-                                            данных</a></label></div>
+                                <div class="form-check mb-4"><input class="form-check-input" type="checkbox"
+                                        id="personalDataAgree" required checked><label class="form-check-label small"
+                                        for="personalDataAgree">Я согласен на обработку <a href="privacy.php" target="_blank" class="text-danger fw-medium">персональных
+                                            данных</a> и принимаю условия <a href="privacy.php" target="_blank" class="text-danger fw-medium">оферты</a></label></div>
                             </div>
                             <div id="bookingError" class="alert alert-danger mb-3" style="display: none; border-radius: 10px; font-size: 0.9rem;">
                                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
