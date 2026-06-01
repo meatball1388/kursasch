@@ -69,7 +69,14 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     end_time    TIMESTAMP NOT NULL,
     status      VARCHAR(50) DEFAULT 'CREATED',
     price       NUMERIC(10,2) NOT NULL,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    comment     TEXT,
+    adults      INTEGER DEFAULT 0,
+    children    INTEGER DEFAULT 0,
+    name        VARCHAR(255),
+    email       VARCHAR(255),
+    phone       VARCHAR(50),
+    passport    TEXT
 );
 
 -- ──────────────────────── ИНДЕКСЫ ────────────────────────
