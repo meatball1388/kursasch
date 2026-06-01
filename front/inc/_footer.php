@@ -31,7 +31,11 @@ function handleSubscribe(e) {
     e.preventDefault();
     const email = document.getElementById('subscribeEmail').value;
     if(email) {
-        alert('Спасибо! Адрес ' + email + ' успешно подписан на рассылку новостей.');
+        if (window.showToast) {
+            window.showToast('Спасибо! Адрес ' + email + ' успешно подписан на рассылку новостей.', 'success');
+        } else {
+            alert('Спасибо! Адрес ' + email + ' успешно подписан на рассылку новостей.');
+        }
         document.getElementById('subscribeEmail').value = '';
     }
 }
