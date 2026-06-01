@@ -154,8 +154,8 @@ if (session_status() === PHP_SESSION_NONE) {
                             <hr>
                             <div class="mb-4">
                                 <div class="form-check"><input class="form-check-input" type="checkbox" id="rulesAgree"
-                                        required><label class="form-check-label" for="rulesAgree">Я согласен с <a
-                                            href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#rulesModal">правилами бронирования</a></label></div>
+                                        required checked><label class="form-check-label" for="rulesAgree">Я согласен с <a
+                                            href="privacy.php#rules" target="_blank" class="text-danger fw-medium">правилами бронирования</a></label></div>
                                 <div class="form-check mb-4"><input class="form-check-input" type="checkbox"
                                         id="personalDataAgree" required checked><label class="form-check-label small"
                                         for="personalDataAgree">Я согласен на обработку <a href="privacy.php" target="_blank" class="text-danger fw-medium">персональных
