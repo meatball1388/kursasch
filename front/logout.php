@@ -2,5 +2,16 @@
 session_start();
 session_unset();
 session_destroy();
-header("Location: index.php");
-exit;
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        localStorage.removeItem('bronic_favorites');
+        window.location.href = 'index.php';
+    </script>
+</head>
+<body>
+    Выход из системы...
+</body>
+</html>

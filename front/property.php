@@ -342,8 +342,10 @@ function renderPage(item, reviews) {
         'kitchen': { icon: 'bi-cup-hot', label: 'Кухня' },
         'parking': { icon: 'bi-car-front', label: 'Парковка' },
         'tv': { icon: 'bi-tv', label: 'ТВ' },
-        'washer': { icon: 'bi-lightning-charge', label: 'Стиральная машина' },
+        'washer': { icon: 'bi-moisture', label: 'Стиральная машина' },
         'ac': { icon: 'bi-snow', label: 'Кондиционер' },
+        'pool': { icon: 'bi-water', label: 'Бассейн' },
+        'gym': { icon: 'bi-heart-pulse', label: 'Спортзал' },
         'safe': { icon: 'bi-shield-check', label: 'Безопасность' }
     };
     let amens = [];
@@ -547,14 +549,14 @@ $('#reviewForm').on('submit', function(e){
                 btn.closest('.review-form-wrap').css('border-color','#22c55e');
                 setTimeout(()=>btn.closest('.review-form-wrap').css('border-color','#fce7eb'),2000);
             } else {
-                alert(r.error||'Ошибка');
+                window.showToast(r.error||'Ошибка');
                 btn.prop('disabled',false).html('<i class="bi bi-send me-2"></i>Отправить отзыв');
             }
-        },
-        error(){
-            alert('Ошибка сервера');
+            },
+            error(){
+            window.showToast('Ошибка сервера');
             btn.prop('disabled',false).html('<i class="bi bi-send me-2"></i>Отправить отзыв');
-        }
+            }
     });
 });
 
@@ -566,19 +568,6 @@ if (PID) {
 } else {
     $('#pageLoader').html('<div class="container"><div class="alert alert-warning text-center mt-5">Укажите ID объекта. <a href="index.php" class="text-warning">На главную</a></div></div>');
 }
-
-// ========== 11. ПОКАЗАТЬ ТЕЛЕФОН ==========
-$(document).on('click', '.btn-show-phone', function (e) {
-    e.preventDefault();
-    var $btn = $(this);
-    if ($btn.data('phone-visible') === true) {
-        $btn.html('<i class="bi bi-telephone me-2"></i>Показать телефон').removeClass('btn-success').addClass('btn-outline-secondary');
-        $btn.data('phone-visible', false);
-    } else {
-        $btn.html('<i class="bi bi-telephone me-2"></i>+7 (495) 123-45-67').removeClass('btn-outline-secondary').addClass('btn-success');
-        $btn.data('phone-visible', true);
-    }
-});
 </script>
 </body>
 </html>

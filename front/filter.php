@@ -31,6 +31,8 @@ if (session_status() === PHP_SESSION_NONE) {
                 $city = isset($_GET['city']) ? htmlspecialchars($_GET['city']) : '';
                 $checkin = isset($_GET['checkin']) ? htmlspecialchars($_GET['checkin']) : '';
                 $checkout = isset($_GET['checkout']) ? htmlspecialchars($_GET['checkout']) : '';
+                $amenities = isset($_GET['amenities']) ? $_GET['amenities'] : [];
+                $rating = isset($_GET['rating']) ? $_GET['rating'] : 'any';
 
                 $filters = [];
                 if (!empty($city))
@@ -39,6 +41,25 @@ if (session_status() === PHP_SESSION_NONE) {
                     $filters[] = "Заезд: " . $checkin;
                 if (!empty($checkout))
                     $filters[] = "Отъезд: " . $checkout;
+                
+                if ($rating !== 'any') {
+                    $filters[] = "Рейтинг: " . intval($rating) . "+ звезд";
+                }
+                
+                if (!empty($amenities)) {
+                    $amNames = [
+                        'wifi' => 'Wi-Fi',
+                        'parking' => 'Парковка',
+                        'ac' => 'Кондиционер',
+                        'kitchen' => 'Кухня',
+                        'tv' => 'ТВ'
+                    ];
+                    $ams = array_map(function ($a) use ($amNames) {
+                        return $amNames[$a] ?? $a;
+                    }, $amenities);
+                    $filters[] = "Удобства: " . implode(', ', $ams);
+                }
+
                 if (!empty($propertyTypes)) {
                     $typeNames = [
                         'apartment' => 'Квартира', 
@@ -84,8 +105,13 @@ if (session_status() === PHP_SESSION_NONE) {
                 date_from: formatDateForApi('<?php echo addslashes($checkin); ?>'),
                 date_to: formatDateForApi('<?php echo addslashes($checkout); ?>')
             };
-            // Получаем выбранные типы из URL (переданные через GET)
+            // Получаем выбранные параметры из PHP (переданные через GET)
             var selectedTypes = <?php echo json_encode($propertyTypes); ?>;
+            var selectedAmenities = <?php echo json_encode($amenities); ?>;
+            var minRating = <?php echo json_encode($rating); ?>;
+            if (minRating === 'any') minRating = 0;
+            minRating = parseFloat(minRating) || 0;
+
             var minPriceFilter = <?php echo intval($minPrice); ?>;
             var maxPriceFilter = <?php echo intval($maxPrice); ?>;
 
@@ -100,19 +126,35 @@ if (session_status() === PHP_SESSION_NONE) {
                         $('#noResults').removeClass('d-none');
                         return;
                     }
-                    // Фильтруем полученные результаты по типу и цене
+                    // Фильтруем полученные результаты
                     var filtered = response.results.filter(function (item) {
-                        var typeMatch = (selectedTypes.length === 0 || selectedTypes.indexOf(
-                            item.type) !== -1);
-                        var priceMatch = (item.base_price >= minPriceFilter && item
-                            .base_price <= maxPriceFilter);
-                        return typeMatch && priceMatch;
+                        var typeMatch = (selectedTypes.length === 0 || selectedTypes.indexOf(item.type) !== -1);
+                        var priceMatch = (item.base_price >= minPriceFilter && item.base_price <= maxPriceFilter);
+                        var ratingMatch = (parseFloat(item.avg_rating || 0) >= minRating);
+                        
+                        var amenitiesMatch = true;
+                        if (selectedAmenities.length > 0) {
+                            var itemAmenities = [];
+                            try {
+                                itemAmenities = typeof item.amenities === 'string' ? JSON.parse(item.amenities) : (item.amenities || []);
+                            } catch(e) { itemAmenities = []; }
+                            
+                            for (var i = 0; i < selectedAmenities.length; i++) {
+                                if (itemAmenities.indexOf(selectedAmenities[i]) === -1) {
+                                    amenitiesMatch = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        return typeMatch && priceMatch && ratingMatch && amenitiesMatch;
                     });
                     if (filtered.length === 0) {
                         $('#noResults').removeClass('d-none');
                         return;
                     }
                     
+                    $('#noResults').addClass('d-none'); // Скрываем надпись, если результаты есть
                     if (typeof window.renderPropertyCards === 'function') {
                         window.renderPropertyCards(filtered, '#searchResults');
                     } else {

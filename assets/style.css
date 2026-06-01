@@ -496,3 +496,14 @@
         width: 100%;
     }
 }
+
+/* Убираем стрелочки у числовых полей ввода */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}

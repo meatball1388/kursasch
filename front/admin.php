@@ -201,7 +201,6 @@ if (!isset($_SESSION['user']) || !$_SESSION['user']['logged_in'] || $_SESSION['u
                   <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="kitchen" id="a_kitchen"><label class="form-check-label small" for="a_kitchen">Кухня</label></div>
                   <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="parking" id="a_parking"><label class="form-check-label small" for="a_parking">Парковка</label></div>
                   <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="tv" id="a_tv"><label class="form-check-label small" for="a_tv">ТВ</label></div>
-                  <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="washer" id="a_washer"><label class="form-check-label small" for="a_washer">Стиралка</label></div>
                   <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="ac" id="a_ac"><label class="form-check-label small" for="a_ac">Кондиционер</label></div>
                   <div class="form-check"><input class="form-check-input" type="checkbox" name="rAmenities" value="safe" id="a_safe"><label class="form-check-label small" for="a_safe">Сейф</label></div>
                 </div>
@@ -521,7 +520,6 @@ $(document).on('click', '.edit-btn', function(){
           <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="kitchen" id="e_kitchen" ${amens.includes('kitchen')?'checked':''}><label class="form-check-label small" for="e_kitchen">Кухня</label></div>
           <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="parking" id="e_parking" ${amens.includes('parking')?'checked':''}><label class="form-check-label small" for="e_parking">Парковка</label></div>
           <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="tv" id="e_tv" ${amens.includes('tv')?'checked':''}><label class="form-check-label small" for="e_tv">ТВ</label></div>
-          <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="washer" id="e_washer" ${amens.includes('washer')?'checked':''}><label class="form-check-label small" for="e_washer">Стиралка</label></div>
           <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="ac" id="e_ac" ${amens.includes('ac')?'checked':''}><label class="form-check-label small" for="e_ac">Кондиционер</label></div>
           <div class="form-check"><input class="form-check-input" type="checkbox" name="eAmenities" value="safe" id="e_safe" ${amens.includes('safe')?'checked':''}><label class="form-check-label small" for="e_safe">Сейф</label></div>
         </div>

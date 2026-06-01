@@ -161,6 +161,10 @@ if (session_status() === PHP_SESSION_NONE) {
                                         for="personalDataAgree">Я согласен на обработку <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#personalDataModal">персональных
                                             данных</a></label></div>
                             </div>
+                            <div id="bookingError" class="alert alert-danger mb-3" style="display: none; border-radius: 10px; font-size: 0.9rem;">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <span class="error-text"></span>
+                            </div>
                             <div class="d-grid gap-2">
                                 <button type="submit" class="btn btn-danger btn-lg"><i
                                         class="bi bi-check-circle me-2"></i>Подтвердить бронирование</button>
@@ -389,13 +393,27 @@ if (session_status() === PHP_SESSION_NONE) {
             }
             calculatePrice();
 
+            function showError(msg) {
+                $('#bookingError .error-text').text(msg);
+                $('#bookingError').fadeIn();
+                // Прокрутка к ошибке
+                $('html, body').animate({
+                    scrollTop: $("#bookingError").offset().top - 200
+                }, 500);
+            }
+
+            function hideError() {
+                $('#bookingError').hide();
+            }
+
             $('#bookingForm').on('submit', function (e) {
                 e.preventDefault();
+                hideError();
                 const sessionUserId = <?php echo $_SESSION['user']['id'] ?? 0; ?>;
 
                 if (!sessionUserId) {
-                    alert('Пожалуйста, войдите в аккаунт');
-                    window.location.href = 'login.php';
+                    showError('Пожалуйста, войдите в аккаунт для завершения бронирования');
+                    setTimeout(() => window.location.href = 'login.php', 2000);
                     return;
                 }
 
@@ -444,8 +462,8 @@ if (session_status() === PHP_SESSION_NONE) {
                                     if (payRes.confirmation_url) {
                                         window.location.href = payRes.confirmation_url;
                                     } else if (payRes.error) {
-                                        alert('Ошибка ЮKassa: ' + payRes.error);
-                                        window.location.href = 'bookings.php';
+                                        showError('Ошибка платежной системы: ' + payRes.error);
+                                        setTimeout(() => window.location.href = 'bookings.php', 3000);
                                     } else {
                                         window.location.href = 'bookings.php';
                                     }
@@ -457,12 +475,12 @@ if (session_status() === PHP_SESSION_NONE) {
                             });
                         } else {
                             submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                            alert('Ошибка: ' + (response.error || 'Не удалось сохранить бронирование'));
+                            showError(response.error || 'Не удалось сохранить бронирование. Попробуйте позже.');
                         }
                     },
                     error: function(xhr) {
                         submitBtn.prop('disabled', false).html('<i class="bi bi-check-circle me-2"></i>Подтвердить бронирование');
-                        alert('Произошла ошибка при отправке запроса на сервер.');
+                        showError('Произошла ошибка при отправке запроса. Проверьте соединение с интернетом.');
                         console.error(xhr.responseText);
                     }
                 });

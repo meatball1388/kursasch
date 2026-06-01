@@ -1,3 +1,9 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+?>
+<script>
+window.phpSessionUser = <?php echo isset($_SESSION['user']) ? json_encode($_SESSION['user']) : 'null'; ?>;
+</script>
 <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="index.php">

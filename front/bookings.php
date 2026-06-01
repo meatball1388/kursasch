@@ -195,7 +195,7 @@ session_start();
                     if (res.success) {
                         loadBookings();
                     } else {
-                        alert('Ошибка при отмене');
+                        window.showToast('Ошибка при отмене: ' + (res.error || 'Неизвестная ошибка'));
                     }
                 }
             });
@@ -218,13 +218,13 @@ session_start();
                     if (payRes.confirmation_url) {
                         window.location.href = payRes.confirmation_url;
                     } else if (payRes.error) {
-                        alert('Ошибка ЮKassa: ' + payRes.error);
+                        window.showToast('Ошибка ЮKassa: ' + payRes.error);
                     } else {
-                        alert('Ошибка инициализации платежа');
+                        window.showToast('Ошибка инициализации платежа');
                     }
                 },
                 error: function() {
-                    alert('Ошибка сервера при создании платежа');
+                    window.showToast('Ошибка сервера при создании платежа');
                 }
             });
         });

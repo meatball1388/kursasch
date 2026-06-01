@@ -2,6 +2,38 @@
 window.adults = 2;
 window.children = 0;
 
+window.showToast = function(msg, type = 'danger') {
+    let $container = $('#toastContainer');
+    if ($container.length === 0) {
+        $('body').append('<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;"></div>');
+        $container = $('#toastContainer');
+    }
+
+    const id = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : (type === 'warning' ? 'bg-warning text-dark' : 'bg-danger');
+    const icon = type === 'success' ? 'bi-check-circle' : (type === 'warning' ? 'bi-exclamation-circle' : 'bi-exclamation-triangle');
+
+    const toastHtml = `
+        <div id="${id}" class="toast align-items-center text-white ${bgClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              <i class="bi ${icon} me-2"></i> ${msg}
+            </div>
+            <button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        </div>
+    `;
+
+    $container.append(toastHtml);
+    const $toast = $('#' + id);
+    const bsToast = new bootstrap.Toast($toast[0], { delay: 5000 });
+    bsToast.show();
+
+    $toast.on('hidden.bs.toast', function () {
+        $(this).remove();
+    });
+};
+
 window.changeGuests = function (type, delta) {
     if (type === 'adults') {
         window.adults = Math.max(1, Math.min(10, window.adults + delta));
@@ -103,19 +135,23 @@ $(document).ready(function () {
 
     // ========== 2. СЛАЙДЕР ЦЕНЫ ==========
     if ($("#slider-range").length) {
+        var startMin = parseInt($("#minPrice").val()) || 0;
+        var startMax = parseInt($("#maxPrice").val()) || 20000;
+        
         $("#slider-range").slider({
             range: true,
             min: 0,
             max: 50000,
             step: 500,
-            values: [0, 20000],
+            values: [startMin, startMax],
             slide: function (event, ui) {
                 $("#minPrice").val(ui.values[0]);
                 $("#maxPrice").val(ui.values[1]);
             }
         });
-        $("#minPrice").val($("#slider-range").slider("values", 0));
-        $("#maxPrice").val($("#slider-range").slider("values", 1));
+        // Устанавливаем значения в инпутах, если они пустые (для подстраховки)
+        if (!$("#minPrice").val()) $("#minPrice").val($("#slider-range").slider("values", 0));
+        if (!$("#maxPrice").val()) $("#maxPrice").val($("#slider-range").slider("values", 1));
 
         $("#minPrice").on("input", function () {
             var val = parseInt($(this).val()) || 0;
@@ -270,18 +306,21 @@ $(document).ready(function () {
                     $btn.find('i').removeClass('bi-heart-fill text-danger').addClass('bi-heart');
                     $btn.attr('title', 'Добавить в избранное');
                 }
-                // Обновляем кэш
-                loadFavorites();
+                // Обновляем кэш и иконки
+                loadFavorites().then(() => {
+                    window.syncFavoriteIcons();
+                });
             }
         });
     }
 
     window.syncFavoriteIcons = function() {
+        if (!window.cachedFavorites) return;
         const favIds = window.cachedFavorites.map(f => parseInt(f.id));
         $('.btn-favorite').each(function () {
             const $btn = $(this);
             const id = parseInt($btn.data('item-id') || $btn.closest('[data-id]').data('id'));
-            if (favIds.includes(id)) {
+            if (id && favIds.includes(id)) {
                 $btn.find('i').removeClass('bi-heart').addClass('bi-heart-fill text-danger');
                 $btn.attr('title', 'В избранном');
             } else {
@@ -353,11 +392,21 @@ $(document).ready(function () {
         e.preventDefault();
         e.stopPropagation();
         var $btn = $(this);
-        if ($btn.data('phone-visible') === true) {
-            $btn.html('<i class="bi bi-telephone me-1"></i>Показать телефон').removeClass('btn-success').addClass('btn-outline-primary');
+        var isVisible = $btn.data('phone-visible') === true;
+        
+        if (isVisible) {
+            $btn.html('<i class="bi bi-telephone me-2"></i>Показать телефон')
+                .removeClass('btn-success')
+                .addClass($btn.hasClass('btn-outline-secondary-mode') ? 'btn-outline-secondary' : 'btn-outline-primary');
             $btn.data('phone-visible', false);
         } else {
-            $btn.html('<i class="bi bi-telephone me-1"></i>+7 (495) 123-45-67').removeClass('btn-outline-primary').addClass('btn-success');
+            // Запоминаем какой был изначальный стиль, если это вторичная кнопка
+            if ($btn.hasClass('btn-outline-secondary')) {
+                $btn.addClass('btn-outline-secondary-mode');
+            }
+            $btn.html('<i class="bi bi-telephone me-2"></i>+7 (495) 123-45-67')
+                .removeClass('btn-outline-primary btn-outline-secondary')
+                .addClass('btn-success');
             $btn.data('phone-visible', true);
         }
     });
@@ -395,16 +444,46 @@ $(document).ready(function () {
             selectedTypes.push($(this).val());
         });
 
+        var selectedAmenities = [];
+        $('input[name="amenities[]"]:checked').each(function () {
+            selectedAmenities.push($(this).val());
+        });
+
+        var minRating = $('input[name="rating"]:checked').val();
+        if (minRating === 'any') minRating = 0;
+        minRating = parseFloat(minRating) || 0;
+
         var visibleCount = 0;
         $('.property-item').each(function () {
             var $item = $(this);
             var price = parseInt($item.data('price')) || 0;
             var type = $item.data('type');
+            var rating = parseFloat($item.data('rating')) || 0;
+            
+            var amenities = [];
+            try {
+                var amData = $item.attr('data-amenities');
+                amenities = typeof amData === 'string' ? JSON.parse(amData) : (amData || []);
+            } catch(e) {
+                amenities = [];
+            }
             
             var priceMatch = (price >= minPrice && price <= maxPrice);
             var typeMatch = (selectedTypes.length === 0 || selectedTypes.indexOf(type) !== -1);
+            var ratingMatch = (rating >= minRating);
             
-            if (priceMatch && typeMatch) {
+            var amenitiesMatch = true;
+            if (selectedAmenities.length > 0) {
+                // Все выбранные удобства должны присутствовать в объекте
+                for (var i = 0; i < selectedAmenities.length; i++) {
+                    if (amenities.indexOf(selectedAmenities[i]) === -1) {
+                        amenitiesMatch = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (priceMatch && typeMatch && ratingMatch && amenitiesMatch) {
                 $item.show();
                 visibleCount++;
             } else {
@@ -512,13 +591,30 @@ $(document).ready(function () {
             var isFav = favIds.includes(item.id);
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
             var reviewCount = item.review_count || 0;
-            var ratingHtml = item.avg_rating > 0 
-                ? `<div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${parseFloat(item.avg_rating).toFixed(1)}</div>` 
+            var avgRating = parseFloat(item.avg_rating || 0);
+            var ratingHtml = avgRating > 0 
+                ? `<div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${avgRating.toFixed(1)}</div>` 
                 : `<div class="text-muted small">Нет оценок</div>`;
+            
+            // Подготовка аменитис для data-атрибута
+            var amenitiesStr = '';
+            if (Array.isArray(item.amenities)) {
+                amenitiesStr = JSON.stringify(item.amenities);
+            } else if (typeof item.amenities === 'string') {
+                amenitiesStr = item.amenities; // Предполагаем JSON-строку из БД
+            } else {
+                amenitiesStr = '[]';
+            }
+
             var itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             var cardHtml = `
-                <div class="col-12 mb-4 property-item" data-id="${item.id}" data-type="${item.type}" data-price="${item.base_price}">
+                <div class="col-12 mb-4 property-item" 
+                     data-id="${item.id}" 
+                     data-type="${item.type}" 
+                     data-price="${item.base_price}"
+                     data-rating="${avgRating}"
+                     data-amenities='${amenitiesStr}'>
                     <div class="property-card card border-0 shadow-sm" style="cursor:pointer;">
                         <div class="row g-0">
                             <div class="col-md-4 position-relative">
@@ -550,7 +646,7 @@ $(document).ready(function () {
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="fw-bold fs-4 text-danger">${priceFormatted} ₽ <span class="text-muted fs-6 fw-normal">/ сутки</span></div>
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-outline-primary btn-show-phone" data-phone-visible="false"><i class="bi bi-telephone me-1"></i>Показать телефон</button>
+                                            <button class="btn btn-outline-primary btn-show-phone" data-phone-visible="false"><i class="bi bi-telephone me-2"></i>Показать телефон</button>
                                             <button class="btn btn-danger btn-book" data-id="${item.id}" data-name="${name}" data-price="${item.base_price}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>
                                         </div>
                                     </div>
@@ -570,8 +666,8 @@ $(document).ready(function () {
         return $('<div>').text(str).html();
     }
 
-    // Загружаем объекты если мы на главной
-    if ($('#searchResults').length && !window.location.search.includes('city')) {
+    // Загружаем объекты если мы на главной (не на странице фильтра)
+    if ($('#searchResults').length && window.location.pathname.indexOf('filter.php') === -1) {
         loadAllProperties();
     }
 });
