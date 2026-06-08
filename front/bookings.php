@@ -76,6 +76,25 @@ session_start();
         </div>
     </div>
 
+    <!-- Модальное окно подтверждения отмены -->
+    <div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i class="bi bi-exclamation-circle text-danger" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-3">Отменить бронирование?</h5>
+                    <p class="text-muted small mb-4">Это действие нельзя будет отменить. Вы уверены?</p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-danger py-2 fw-bold" id="confirmCancelBtn" style="border-radius: 12px;">Да, отменить</button>
+                        <button type="button" class="btn btn-light py-2 text-muted fw-medium" data-bs-dismiss="modal" style="border-radius: 12px;">Назад</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include 'inc/_footer.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -84,6 +103,9 @@ session_start();
     <script>
     <?php if (isset($_SESSION['user']) && $_SESSION['user']['logged_in']): ?>
     $(function() {
+        let bookingIdToCancel = null;
+        const cancelModal = new bootstrap.Modal(document.getElementById('confirmCancelModal'));
+
         function statusBadge(status) {
             const map = {
                 'CREATED':   '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Ожидает</span>',
@@ -182,21 +204,39 @@ session_start();
             });
         }
 
-        // Отмена
+        // Отмена (открытие модалки)
         $(document).on('click', '.btn-cancel', function() {
-            if (!confirm('Вы уверены, что хотите отменить это бронирование?')) return;
-            const id = $(this).data('id');
+            bookingIdToCancel = $(this).data('id');
+            cancelModal.show();
+        });
+
+        // Подтверждение отмены
+        $('#confirmCancelBtn').on('click', function() {
+            if (!bookingIdToCancel) return;
+            
+            const btn = $(this);
+            const originalText = btn.text();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Отмена...');
+
             $.ajax({
                 url: 'http://' + (window.location.hostname || 'localhost') + ':8000/admin_api',
                 method: 'POST',
                 contentType: 'application/json',
-                data: JSON.stringify({ action: 'update', table: 'bookings', id: id, fields: { status: 'CANCELLED' } }),
+                data: JSON.stringify({ action: 'update', table: 'bookings', id: bookingIdToCancel, fields: { status: 'CANCELLED' } }),
                 success: function(res) {
+                    btn.prop('disabled', false).text(originalText);
+                    cancelModal.hide();
                     if (res.success) {
                         loadBookings();
+                        if (window.showToast) window.showToast('Бронирование отменено', 'success');
                     } else {
-                        window.showToast('Ошибка при отмене: ' + (res.error || 'Неизвестная ошибка'));
+                        if (window.showToast) window.showToast('Ошибка при отмене: ' + (res.error || 'Неизвестная ошибка'));
                     }
+                },
+                error: function() {
+                    btn.prop('disabled', false).text(originalText);
+                    cancelModal.hide();
+                    if (window.showToast) window.showToast('Ошибка сервера при отмене');
                 }
             });
         });

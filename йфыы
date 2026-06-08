@@ -1,0 +1,127 @@
+Отличная идея! Визуализация схемы базы данных очень помогает в понимании её структуры.
+
+  Для сайта dbdiagram.io (https://dbdiagram.io) используется язык разметки DBML. Я подготовил для вас код, который
+  описывает всю нашу актуальную нормализованную БД (в 3НФ).
+
+  Скопируйте этот код и вставьте его в левую панель на сайте dbdiagram.io:
+      // ==========================================
+      // Бронирование Недвижимости (BRONIC.RU)
+      // Схема БД в 3-й Нормальной Форме (3NF)
+      // ==========================================
+     
+      Table users {
+        id integer [primary key, increment]
+        email varchar [unique, not null]
+        password_hash varchar [not null]
+   salt varchar
+   name varchar
+   surname varchar
+   phone varchar
+   passport text
+   role varchar [default: 'user']
+   created_at timestamp
+ }
+
+ Table cities {
+   id integer [primary key, increment]
+   name varchar [unique, not null]
+ }
+
+ Table resource_types {
+   id integer [primary key, increment]
+   name varchar [unique, not null]
+   display_name varchar
+ }
+
+ Table resources {
+   id integer [primary key, increment]
+   name varchar [not null]
+   city_id integer [ref: > cities.id]
+   type_id integer [ref: > resource_types.id]
+   description text
+   base_price decimal
+   is_active boolean [default: true]
+   address varchar
+   image_url varchar
+   area integer [default: 0]
+   guests integer [default: 0]
+   bedrooms integer [default: 0]
+ }
+
+ Table amenities {
+   id integer [primary key, increment]
+   name varchar [unique, not null]
+   icon varchar
+ }
+
+ Table resource_amenities {
+   resource_id integer [ref: > resources.id]
+   amenity_id integer [ref: > amenities.id]
+
+   Indexes {
+     (resource_id, amenity_id) [pk]
+   }
+ }
+
+ Table bookings {
+   id integer [primary key, increment]
+   user_id integer [ref: > users.id]
+   resource_id integer [ref: > resources.id]
+   start_time timestamp
+   end_time timestamp
+   status varchar [default: 'CREATED'] // CREATED, PAID, COMPLETED, CANCELLED
+   price decimal
+   comment text
+   adults integer [default: 0]
+   children integer [default: 0]
+   created_at timestamp
+ }
+
+ Table guest_profiles {
+   id integer [primary key, increment]
+   booking_id integer [unique, ref: - bookings.id] // Связь 1-к-1
+   name varchar
+   email varchar
+   phone varchar
+   passport text
+   created_at timestamp
+ }
+
+ Table payments {
+   id integer [primary key, increment]
+   booking_id integer [ref: > bookings.id]
+   amount decimal
+   status varchar [default: 'PENDING']
+   payment_method varchar
+   external_id varchar // ID платежа в ЮKassa
+   created_at timestamp
+ }
+
+ Table reviews {
+   id integer [primary key, increment]
+   resource_id integer [ref: > resources.id]
+   user_id integer [ref: > users.id]
+   author_name varchar // Оставлено только для анонимов (NULL для юзеров)
+   rating integer [default: 5]
+      comment text
+      created_at timestamp
+    }
+   
+    Table favorites {
+      user_id integer [ref: > users.id]
+      resource_id integer [ref: > resources.id]
+      created_at timestamp
+   
+      Indexes {
+        (user_id, resource_id) [pk]
+      }
+    }
+   
+    Table audit_logs {
+      id integer [primary key, increment]
+      action varchar [not null]
+      user_id integer [ref: > users.id]
+      resource_id integer [ref: > resources.id]
+      details text
+      created_at timestamp
+    }
