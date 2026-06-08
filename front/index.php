@@ -327,7 +327,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 if (item) {
                                     var name = $('<div>').text(item.name || 'Объект #' + rec.property_id).html();
                                     var address = $('<div>').text(item.address || item.location || '').html();
-                                    var price = Number(item.base_price || 0).toLocaleString('ru-RU');
+                                    var price = Number(item.price_per_night || 0).toLocaleString('ru-RU');
                                     var imgUrl = item.image_url || '../img/property/metro-plus.png';
 
                                     var card = `

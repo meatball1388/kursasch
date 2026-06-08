@@ -376,7 +376,7 @@ $(document).ready(function () {
             item = {
                 id: parseInt($card.data('id')),
                 name: $card.find('.card-title').text(),
-                base_price: $card.data('price'),
+                price_per_night: $card.data('price'),
                 type: $card.data('type'),
                 image_url: $card.find('img').attr('src')
             };
@@ -582,7 +582,7 @@ $(document).ready(function () {
 
         $.each(items, function (index, item) {
             var typeName = typeNames[item.type] || 'Недвижимость';
-            var priceFormatted = Number(item.base_price).toLocaleString('ru-RU');
+            var priceFormatted = Number(item.price_per_night).toLocaleString('ru-RU');
             var name = escapeHtml(item.name || 'Без названия');
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');
@@ -612,7 +612,7 @@ $(document).ready(function () {
                 <div class="col-12 mb-4 property-item" 
                      data-id="${item.id}" 
                      data-type="${item.type}" 
-                     data-price="${item.base_price}"
+                     data-price="${item.price_per_night}"
                      data-rating="${avgRating}"
                      data-amenities='${amenitiesStr}'>
                     <div class="property-card card border-0 shadow-sm" style="cursor:pointer;">
@@ -647,7 +647,7 @@ $(document).ready(function () {
                                         <div class="fw-bold fs-4 text-danger">${priceFormatted} ₽ <span class="text-muted fs-6 fw-normal">/ сутки</span></div>
                                         <div class="d-flex gap-2">
                                             <button class="btn btn-outline-primary btn-show-phone" data-phone-visible="false"><i class="bi bi-telephone me-2"></i>Показать телефон</button>
-                                            <button class="btn btn-danger btn-book" data-id="${item.id}" data-name="${name}" data-price="${item.base_price}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>
+                                            <button class="btn btn-danger btn-book" data-id="${item.id}" data-name="${name}" data-price="${item.price_per_night}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>
                                         </div>
                                     </div>
                                 </div>

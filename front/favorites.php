@@ -79,7 +79,7 @@ if (session_status() === PHP_SESSION_NONE) {
         function buildCard(item, gridMode) {
             const img = item.image_url || '../img/property/metro-plus.png';
             const onerr = "this.src='../img/property/metro-plus.png'";
-            const price = Number(item.base_price).toLocaleString('ru-RU');
+            const price = Number(item.price_per_night).toLocaleString('ru-RU');
             const typeNames = { 'apartment': 'Квартира', 'dacha': 'Дача', 'room': 'Комната', 'cottedzh': 'Коттедж' };
             const typeName = typeNames[item.type] || 'Недвижимость';
 
@@ -105,7 +105,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                         <div class="text-end">
                                             <div class="fw-bold fs-5">${price} ₽</div>
                                             <div class="text-muted small">/ сутки</div>
-                                            <a href="booking.php?id=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.base_price}&location=${encodeURIComponent(item.location)}" class="btn btn-danger btn-sm mt-2">Забронировать</a>
+                                            <a href="booking.php?id=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price_per_night}&location=${encodeURIComponent(item.location)}" class="btn btn-danger btn-sm mt-2">Забронировать</a>
                                         </div>
                                     </div>
                                 </div>
@@ -132,7 +132,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <span class="fw-bold fs-5">${price} ₽</span>
                                 <span class="text-muted small"> / сутки</span>
                             </div>
-                            <a href="booking.php?id=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.base_price}&location=${encodeURIComponent(item.location)}" class="btn btn-danger btn-sm">Забронировать</a>
+                            <a href="booking.php?id=${item.id}&name=${encodeURIComponent(item.name)}&price=${item.price_per_night}&location=${encodeURIComponent(item.location)}" class="btn btn-danger btn-sm">Забронировать</a>
                         </div>
                     </div>
                 </div>

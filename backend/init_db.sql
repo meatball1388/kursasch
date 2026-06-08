@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.resources (
     name        VARCHAR(255) NOT NULL,
     type        VARCHAR(50)  NOT NULL,
     description TEXT,
-    base_price  NUMERIC(10,2) NOT NULL,
+    price_per_night  NUMERIC(10,2) NOT NULL,
     is_active   BOOLEAN DEFAULT TRUE,
     address     VARCHAR(255),
     location    VARCHAR(255),
@@ -108,7 +108,7 @@ INSERT INTO public.users (email, password_hash, name, surname, role, created_at,
 ON CONFLICT (email) DO NOTHING;
 
 -- Объекты недвижимости
-INSERT INTO public.resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms) VALUES
+INSERT INTO public.resources (name, type, description, price_per_night, is_active, address, location, image_url, area, guests, bedrooms) VALUES
 ('Апартаменты «Metro Plus»',    'apartment',
  'Уютная студия в центре города. Современный ремонт, вся необходимая техника, Wi-Fi. Рядом метро.',
  2500.00, TRUE, 'Москва, ул. Тверская, д. 15', 'Москва',

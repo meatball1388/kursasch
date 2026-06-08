@@ -51,24 +51,27 @@ async def recommend(request: Request, body: RecommendRequest):
 
         async with pool.acquire() as con:
             # Строгая фильтрация по цене и городу
-            conditions = ["is_active = TRUE", "base_price >= $1", "base_price <= $2"]
+            conditions = ["is_active = TRUE", "price_per_night >= $1", "price_per_night <= $2"]
             params = [body.min_price, body.max_price]
 
             if db_type != "any":
-                conditions.append(f"type = ${len(params) + 1}")
+                conditions.append(f"rt.name = ${len(params) + 1}")
                 params.append(db_type)
 
             if body.city and body.city != "any":
                 # Специальная обработка для Москвы, чтобы включать Московскую область
                 if "Москва" in body.city:
-                    conditions.append(f"(location ILIKE ${len(params) + 1} OR location ILIKE 'Московская%')")
+                    conditions.append(f"(c.name ILIKE ${len(params) + 1} OR c.name ILIKE 'Московская%')")
                     params.append(f"%{body.city}%")
                 else:
-                    conditions.append(f"location ILIKE ${len(params) + 1}")
+                    conditions.append(f"c.name ILIKE ${len(params) + 1}")
                     params.append(f"%{body.city}%")
 
-            query = f"""SELECT id, name, type, location, base_price, area, guests, bedrooms, amenities
-                        FROM resources
+            query = f"""SELECT r.id, r.name, rt.name as type, c.name as location, r.price_per_night, r.area, r.guests, r.bedrooms, 
+                               COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{{}}') as amenities
+                        FROM resources r
+                        LEFT JOIN cities c ON r.city_id = c.id
+                        LEFT JOIN resource_types rt ON r.type_id = rt.id
                         WHERE {" AND ".join(conditions)}"""
 
             rows = await con.fetch(query, *params)

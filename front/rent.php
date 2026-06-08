@@ -271,7 +271,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         name: title || typeName,
                         type: propertyType,
                         description: description,
-                        base_price: price,
+                        price_per_night: price,
                         is_active: true,
                         address: address,
                         location: location,

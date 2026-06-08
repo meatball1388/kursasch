@@ -1,20 +1,25 @@
 import asyncio
 import asyncpg
 import os
+import dotenv
 
-with open("create_tables.sql", "r", encoding="utf-8") as f:
-    sql = f.read()
+dotenv.load_dotenv()
 
-async def reset_db():
-    con = await asyncpg.connect("postgresql://postgres:1234@localhost:5432/creating_software")
-    # Удаляем старые таблицы перед импортом
-    await con.execute("DROP TABLE IF EXISTS bookings CASCADE;")
-    await con.execute("DROP TABLE IF EXISTS resources CASCADE;")
-    await con.execute("DROP TABLE IF EXISTS users CASCADE;")
+async def reimport():
+    db_url = os.getenv("DB_URL")
+    if not db_url:
+        print("ОШИБКА: DB_URL не найден в .env")
+        return
+        
+    con = await asyncpg.connect(db_url)
+    print("Re-importing schema from init_db.sql...")
     
+    with open('init_db.sql', 'r', encoding='utf-8') as f:
+        sql = f.read()
+        
     await con.execute(sql)
-    print("DB reset successful!")
+    print("Success!")
     await con.close()
 
 if __name__ == "__main__":
-    asyncio.run(reset_db())
+    asyncio.run(reimport())

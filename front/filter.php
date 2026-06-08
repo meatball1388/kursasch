@@ -129,7 +129,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     // Фильтруем полученные результаты
                     var filtered = response.results.filter(function (item) {
                         var typeMatch = (selectedTypes.length === 0 || selectedTypes.indexOf(item.type) !== -1);
-                        var priceMatch = (item.base_price >= minPriceFilter && item.base_price <= maxPriceFilter);
+                        var priceMatch = (item.price_per_night >= minPriceFilter && item.price_per_night <= maxPriceFilter);
                         var ratingMatch = (parseFloat(item.avg_rating || 0) >= minRating);
                         
                         var amenitiesMatch = true;

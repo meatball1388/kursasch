@@ -1,28 +1,33 @@
 import asyncio
 import asyncpg
 import os
+import dotenv
 
-async def migrate():
-    con = await asyncpg.connect("postgresql://postgres:1234@localhost:5432/creating_software")
+dotenv.load_dotenv()
+
+async def migrate_images():
+    db_url = os.getenv("DB_URL")
+    if not db_url:
+        print("ОШИБКА: DB_URL не найден в .env")
+        return
+        
+    con = await asyncpg.connect(db_url)
+    # Маппинг имен файлов
+    mapping = {
+        1: "metro-plus.png",
+        2: "lesnau-skazka.webp",
+        3: "komnata-arbat.jpg",
+        4: "kotedzh-luxery.webp",
+        5: "studia.jpg",
+        6: "dacha-u-ozera.jpg"
+    }
     
-    # 1. Добавляем колонку для фото
-    await con.execute("ALTER TABLE resources ADD COLUMN IF NOT EXISTS image_url TEXT")
-    
-    # 2. Обновляем данные (используем локальные фото)
-    updates = [
-        (1, "../img/property/metro-plus.png"), 
-        (2, "../img/property/lesnau-skazka.webp"),
-        (3, "../img/property/komnata-arbat.jpg"),
-        (4, "../img/property/kotedzh-luxery.webp"),
-        (5, "../img/property/studia.jpg"),
-        (6, "../img/property/dacha-u-ozera.jpg"),
-    ]
-    
-    for rid, url in updates:
+    for rid, fname in mapping.items():
+        url = f"../img/property/{fname}"
         await con.execute("UPDATE resources SET image_url = $1 WHERE id = $2", url, rid)
-    
-    print("Migration and data update successful!")
+        print(f"Updated resource {rid} -> {url}")
+        
     await con.close()
 
 if __name__ == "__main__":
-    asyncio.run(migrate())
+    asyncio.run(migrate_images())

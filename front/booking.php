@@ -367,9 +367,16 @@ if (session_status() === PHP_SESSION_NONE) {
             $('#checkinDate').val(formatDate(checkinDate)).datepicker({
                 dateFormat: "dd.mm.yy", minDate: 0,
                 onSelect: function (selected) {
-                    let min = $.datepicker.parseDate('dd.mm.yy', selected);
-                    min.setDate(min.getDate() + 2);
-                    $('#checkoutDate').datepicker('option', 'minDate', min);
+                    let ci = $.datepicker.parseDate('dd.mm.yy', selected);
+                    let minOut = new Date(ci);
+                    minOut.setDate(ci.getDate() + 2);
+                    
+                    $('#checkoutDate').datepicker('option', 'minDate', minOut);
+                    
+                    let co = $('#checkoutDate').datepicker('getDate');
+                    if (!co || co < minOut) {
+                        $('#checkoutDate').val(formatDate(minOut)).datepicker('setDate', minOut);
+                    }
                     calculatePrice();
                 }
             });
@@ -378,12 +385,27 @@ if (session_status() === PHP_SESSION_NONE) {
                 dateFormat: "dd.mm.yy", minDate: 2,
                 onSelect: calculatePrice
             });
+            
+            $('#checkinDate, #checkoutDate').on('change', calculatePrice);
 
             let currentTotal = 0;
             function calculatePrice() {
-                let ci = $('#checkinDate').datepicker('getDate'), co = $('#checkoutDate').datepicker('getDate');
+                let ci = $('#checkinDate').datepicker('getDate');
+                let co = $('#checkoutDate').datepicker('getDate');
+                
+                // Fallback to manual parsing if datepicker('getDate') fails (e.g. on manual input)
+                if (!ci) {
+                    try { ci = $.datepicker.parseDate('dd.mm.yy', $('#checkinDate').val()); } catch(e) {}
+                }
+                if (!co) {
+                    try { co = $.datepicker.parseDate('dd.mm.yy', $('#checkoutDate').val()); } catch(e) {}
+                }
+
                 if (ci && co) {
-                    let nights = Math.ceil((co - ci) / (86400000));
+                    // Используем Math.round для избежания проблем с переходом на летнее/зимнее время
+                    let nights = Math.round((co - ci) / (86400000));
+                    if (nights < 1) nights = 0; // На всякий случай
+
                     $('#nightsCount').text(nights);
                     let sub = nights * propertyPrice;
                     currentTotal = sub + 1000 + 750;

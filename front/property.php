@@ -314,7 +314,7 @@ function renderPage(item, reviews) {
     const avgR = avg(reviews);
     const reviewCount = reviews.length;
     const img = item.image_url || '../img/property/metro-plus.png';
-    const priceF = Number(item.base_price).toLocaleString('ru-RU');
+    const priceF = Number(item.price_per_night).toLocaleString('ru-RU');
 
     // Hero
     $('#heroImg').attr('src', img).attr('alt', item.name);
@@ -449,9 +449,20 @@ if ($.fn.datepicker) {
         dateFormat: "dd.mm.yy",
         minDate: 0,
         onSelect: function(selected) {
-            let min = $.datepicker.parseDate('dd.mm.yy', selected);
-            min.setDate(min.getDate() + 2);
-            $('#checkoutDate').datepicker('option', 'minDate', min);
+            let ci = $.datepicker.parseDate('dd.mm.yy', selected);
+            let minOut = new Date(ci);
+            minOut.setDate(ci.getDate() + 2);
+            $('#checkoutDate').datepicker('option', 'minDate', minOut);
+            
+            let coVal = $('#checkoutDate').val();
+            try {
+                let co = $.datepicker.parseDate('dd.mm.yy', coVal);
+                if (co < minOut) {
+                    $('#checkoutDate').val(formatDate(minOut)).datepicker('setDate', minOut);
+                }
+            } catch(e) {
+                $('#checkoutDate').val(formatDate(minOut)).datepicker('setDate', minOut);
+            }
             updatePriceBreakdown();
         }
     });
@@ -475,7 +486,7 @@ function updatePriceBreakdown() {
             const co = $.datepicker.parseDate('dd.mm.yy', coVal);
             const nights = Math.round((co-ci)/(86400000));
             if (nights > 0) {
-                const pricePerNight = propertyData.base_price;
+                const pricePerNight = propertyData.price_per_night;
                 const total = pricePerNight * nights;
                 $('#pricePerNightLabel').text(`${Number(pricePerNight).toLocaleString('ru-RU')} ₽ × ${nights} ночей`);
                 $('#pricePerNightTotal').text(`${Number(total).toLocaleString('ru-RU')} ₽`);
@@ -501,7 +512,7 @@ $('#bookBtn').on('click', function() {
     const adults = urlParams.get('adults') || 2;
     const children = urlParams.get('children') || 0;
     
-    window.location = `booking.php?id=${propertyData.id}&name=${encodeURIComponent(propertyData.name)}&price=${propertyData.base_price}&location=${encodeURIComponent(propertyData.address||propertyData.location||'')}&checkin=${ci}&checkout=${co}&adults=${adults}&children=${children}`;
+    window.location = `booking.php?id=${propertyData.id}&name=${encodeURIComponent(propertyData.name)}&price=${propertyData.price_per_night}&location=${encodeURIComponent(propertyData.address||propertyData.location||'')}&checkin=${ci}&checkout=${co}&adults=${adults}&children=${children}`;
 });
 
 // Star selector

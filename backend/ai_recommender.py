@@ -148,7 +148,7 @@ def get_recommendations(
         cand_type = cand_type if cand_type in PROPERTY_TYPES else PROPERTY_TYPES[0]
 
         # Use candidate's actual data for ranking
-        cand_price = float(cand.get("base_price", min_price))
+        cand_price = float(cand.get("price_per_night", min_price))
         cand_rooms = cand.get("bedrooms", rooms)
         cand_guests = cand.get("guests", guests)
         cand_amenities = cand.get("amenities", amenities)

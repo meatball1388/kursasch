@@ -17,7 +17,7 @@ class Resource(BaseModel):
     name: str
     type: str
     description: str
-    base_price: float
+    price_per_night: float
     is_active: bool
     address: str
     location: str

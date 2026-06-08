@@ -118,7 +118,7 @@ async def seed():
         )
         if overlap: continue
         
-        price = await con.fetchval("SELECT base_price FROM resources WHERE id = $1", rid)
+        price = await con.fetchval("SELECT price_per_night FROM resources WHERE id = $1", rid)
         total_price = float(price or 0) * (end_time - start_time).days
         
         status = random.choice(statuses)

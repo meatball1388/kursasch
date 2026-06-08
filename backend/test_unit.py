@@ -131,7 +131,7 @@ class TestSearch:
         async with client:
             await client.post("/search", json={"min_price": 1000, "max_price": 5000})
         query = con.fetch.call_args[0][0]
-        assert "base_price" in query
+        assert "price_per_night" in query
 
     @pytest.mark.asyncio
     async def test_search_with_dates_filters_booked(self, client, con):
@@ -343,7 +343,7 @@ class TestResources:
             resp = await client.post("/resources", json={
                 "name": "Новая дача",
                 "type": "dacha",
-                "base_price": 5000,
+                "price_per_night": 5000,
                 "address": "ул. Мира, 5",
                 "location": "Казань"
             })

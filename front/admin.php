@@ -334,7 +334,7 @@ function renderTable(tab, data){
         <td>${img}</td>
         <td><div class="fw-semibold">${esc(item.name)}</div></td>
         <td class="text-muted small">${typeNames[item.type]||item.type}</td>
-        <td class="fw-semibold">${Number(item.base_price).toLocaleString('ru-RU')} ₽</td>
+        <td class="fw-semibold">${Number(item.price_per_night).toLocaleString('ru-RU')} ₽</td>
         <td class="text-muted small">${esc(item.location||'—')}</td>
         <td>${badge}</td>
         <td><div class="d-flex gap-1">
@@ -506,7 +506,7 @@ $(document).on('click', '.edit-btn', function(){
         <div class="col-6"><label class="form-label fw-semibold small">Адрес</label><input class="form-control" id="editAddress" value="${esc(item.address||'')}"></div>
       </div>
       <div class="row g-2 mb-3">
-        <div class="col-6"><label class="form-label fw-semibold small">Цена (₽)</label><input type="number" class="form-control" id="editPrice" value="${item.base_price||0}"></div>
+        <div class="col-6"><label class="form-label fw-semibold small">Цена (₽)</label><input type="number" class="form-control" id="editPrice" value="${item.price_per_night||0}"></div>
         <div class="col-6"><label class="form-label fw-semibold small">Площадь</label><input type="number" class="form-control" id="editArea" value="${item.area||0}"></div>
       </div>
       <div class="row g-2 mb-3">
@@ -563,7 +563,7 @@ $('#saveEditBtn').on('click', function(){
         name:$('#editName').val(),
         location:$('#editLocation').val(),
         address:$('#editAddress').val(),
-        base_price:parseFloat($('#editPrice').val()),
+        price_per_night:parseFloat($('#editPrice').val()),
         area:parseInt($('#editArea').val()),
         guests:parseInt($('#editGuests').val()),
         bedrooms:parseInt($('#editBedrooms').val()),
@@ -634,7 +634,7 @@ $('#addForm').on('submit', function(e){
         name:$('#rName').val(), 
         type:$('#rType').val(),
         description:$('#rDesc').val(), 
-        base_price:parseFloat($('#rPrice').val()),
+        price_per_night:parseFloat($('#rPrice').val()),
         address:$('#rAddress').val(), 
         location:$('#rLocation').val(),
         area:parseInt($('#rArea').val()),

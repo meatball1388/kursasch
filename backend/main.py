@@ -68,12 +68,9 @@ def decrypt_data(token: str) -> str:
 shop_id = (os.getenv("YOOKASSA_SHOP_ID") or "").strip()
 secret_key = (os.getenv("YOOKASSA_SECRET_KEY") or "").strip()
 
-print(f"DEBUG STARTUP: Loaded ShopID: '{shop_id}'")
-print(f"DEBUG STARTUP: Loaded SecretKey length: {len(secret_key)}")
-if len(secret_key) > 5:
-    print(f"DEBUG STARTUP: SecretKey starts with: {secret_key[:12]}...")
-
-if not shop_id or not secret_key:
+if shop_id and secret_key:
+    print("DEBUG STARTUP: YooKassa credentials loaded")
+else:
     print("ВНИМАНИЕ: Данные ЮKassa (ShopID или Key) не найдены!")
 
 Configuration.account_id = shop_id
@@ -146,8 +143,17 @@ async def lifespan(app: FastAPI):
             print("Миграция: Добавление колонки comment в таблицу bookings...")
             await con.execute("ALTER TABLE bookings ADD COLUMN comment TEXT;")
 
-        # 5. Проверка новых таблиц (amenities, guest_profiles, audit_logs)
+        # 5. Проверка новых таблиц (amenities, guest_profiles, audit_logs, cities, resource_types)
         tables_to_check = {
+            "cities": """CREATE TABLE cities (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL
+            )""",
+            "resource_types": """CREATE TABLE resource_types (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50) UNIQUE NOT NULL,
+                display_name VARCHAR(100)
+            )""",
             "amenities": """CREATE TABLE amenities (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) UNIQUE NOT NULL,
@@ -183,6 +189,20 @@ async def lifespan(app: FastAPI):
                 print(f"Миграция: Создание таблицы {table}...")
                 await con.execute(create_sql)
             
+        # 6. Проверка колонок city_id и type_id в resources
+        res_fk_cols = {
+            "city_id": "INTEGER REFERENCES cities(id)",
+            "type_id": "INTEGER REFERENCES resource_types(id)"
+        }
+        for col, col_def in res_fk_cols.items():
+            check_fk = await con.fetchval(f"""
+                SELECT count(*) FROM information_schema.columns 
+                WHERE table_name='resources' AND column_name='{col}';
+            """)
+            if check_fk == 0:
+                print(f"Миграция: Добавление колонки {col} в таблицу resources...")
+                await con.execute(f"ALTER TABLE resources ADD COLUMN {col} {col_def};")
+
         # 7. Проверка колонок в users (phone, passport)
         user_cols = {
             "phone": "VARCHAR(50)",
@@ -225,6 +245,12 @@ app = FastAPI(lifespan=lifespan)
 # CORS — разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://localhost:80",
+        "http://localhost:8000",
+    ],
     allow_origin_regex=r"http(s)?://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["*"],
@@ -309,7 +335,7 @@ async def get_cities(request: Request):
 # ==============================================================
 # ПОИСК (POST /search)
 # Фронт: main.js → loadAllProperties() / filter.php
-# Ответ: { results: [ { id, name, type, base_price, address, location, image_url, description } ] }
+# Ответ: { results: [ { id, name, type, price_per_night, address, location, image_url, description } ] }
 # ==============================================================
 
 @app.post("/search")
@@ -337,12 +363,12 @@ async def search(request: Request):
         i += 1
 
     if data.get("min_price") is not None:
-        conditions.append(f"r.base_price >= ${i}")
+        conditions.append(f"r.price_per_night >= ${i}")
         params.append(float(data["min_price"]))
         i += 1
 
     if data.get("max_price") is not None:
-        conditions.append(f"r.base_price <= ${i}")
+        conditions.append(f"r.price_per_night <= ${i}")
         params.append(float(data["max_price"]))
         i += 1
 
@@ -368,9 +394,9 @@ async def search(request: Request):
         rows = await con.fetch(
             f"""
             SELECT r.id, r.name, rt.name as type, r.description,
-                   r.address, c.name as location, r.base_price, r.image_url,
+                   r.address, c.name as location, r.price_per_night, r.image_url,
                    r.area, r.guests, r.bedrooms,
-                   COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{{{{}}}}') as amenities,
+                   COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{{}}') as amenities,
                    COUNT(rv.id)::int AS review_count,
                    COALESCE(ROUND(AVG(rv.rating)::numeric, 1), 0)::float AS avg_rating
             FROM resources r
@@ -546,8 +572,8 @@ async def get_favorites(user_id: int, request: Request):
             d = dict(row)
             d["image_url"] = map_image_url(d.get("image_url"), d["id"])
             # Приводим Decimal к float для JSON
-            if d.get("base_price"):
-                d["base_price"] = float(d["base_price"])
+            if d.get("price_per_night"):
+                d["price_per_night"] = float(d["price_per_night"])
             results.append(d)
         return {"results": results}
 
@@ -649,21 +675,19 @@ async def create_resource(request: Request):
             )
 
             result = await con.fetchrow(
-                """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms, city_id, type_id)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id""",
-                data.get("name", "Без названия"),
-                type_name,
-                data.get("description", ""),
-                float(data.get("base_price", 0)),
-                data.get("is_active", True),
-                data.get("address", ""),
-                loc_name,
-                data.get("image_url", None),
-                int(area),
-                int(guests),
-                int(bedrooms),
-                city_id,
-                type_id
+               """INSERT INTO resources (name, description, price_per_night, is_active, address, image_url, area, guests, bedrooms, city_id, type_id)
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id""",
+               data.get("name", "Без названия"),
+               data.get("description", ""),
+               float(data.get("price_per_night", 0)),
+               data.get("is_active", True),
+               data.get("address", ""),
+               data.get("image_url", None),
+               int(area),
+               int(guests),
+               int(bedrooms),
+               city_id,
+               type_id
             )
             res_id = result["id"]
             
@@ -703,7 +727,7 @@ async def create_booking(request: Request):
 
         start_time = parse_date(start_str)
         end_time = parse_date(end_str)
-        price = float(data.get("price") or data.get("price_per_night", 0))
+        price_per_night = float(data.get("price_per_night", 0))
         resource_id = int(data.get("resource_id", 1))
         user_id = int(data.get("user_id", 1))
         comment = data.get("comment", "")
@@ -745,7 +769,7 @@ async def create_booking(request: Request):
             result = await con.fetchrow(
                 """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment, adults, children)
                    VALUES ($1, $2, $3, $4, 'CREATED', $5, $6, $7, $8) RETURNING id""",
-                user_id, resource_id, start_time, end_time, price, comment, adults, children
+                user_id, resource_id, start_time, end_time, price_per_night, comment, adults, children
             )
             
             # Вставка в guest_profiles
@@ -808,7 +832,7 @@ async def admin_api(request: Request):
                     )
                 elif table == "resources":
                     rows = await con.fetch(
-                        """SELECT r.id, r.name, rt.name as type, r.base_price, c.name as location, r.address, r.is_active, r.area, r.guests, r.bedrooms, r.image_url,
+                        """SELECT r.id, r.name, rt.name as type, r.price_per_night, c.name as location, r.address, r.is_active, r.area, r.guests, r.bedrooms, r.image_url,
                                   COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{}') as amenities
                            FROM resources r 
                            LEFT JOIN cities c ON r.city_id = c.id
@@ -858,6 +882,25 @@ async def admin_api(request: Request):
                 fields = data.get("fields", {})
                 if not item_id or not fields:
                     return {"error": "id and fields required"}
+
+                # Специальная обработка для таблицы resources: маппинг строк в ID
+                if table == "resources":
+                    if "location" in fields:
+                        loc_name = fields.pop("location")
+                        if loc_name:
+                            city_id = await con.fetchval(
+                                "INSERT INTO cities (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+                                loc_name
+                            )
+                            fields["city_id"] = city_id
+                    if "type" in fields:
+                        type_name = fields.pop("type")
+                        if type_name:
+                            type_id = await con.fetchval(
+                                "INSERT INTO resource_types (name, display_name) VALUES ($1, $1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+                                type_name
+                            )
+                            fields["type_id"] = type_id
 
                 set_clauses = []
                 params = []
@@ -988,8 +1031,8 @@ async def get_resource(request: Request, resource_id: int):
         d = dict(row)
         d["image_url"] = map_image_url(d.get("image_url"), d["id"])
         # Приводим Decimal к float
-        if d.get("base_price"):
-            d["base_price"] = float(d["base_price"])
+        if d.get("price_per_night"):
+            d["price_per_night"] = float(d["price_per_night"])
         return d
 
 
