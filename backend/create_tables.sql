@@ -164,7 +164,7 @@ CREATE TABLE public.resources (
     name character varying(255) NOT NULL,
     type character varying(50) NOT NULL,
     description text,
-    base_price numeric(10,2) NOT NULL,
+    price_per_night numeric(10,2) NOT NULL,
     is_active boolean DEFAULT true,
     address character varying(255),
     location character varying(255),
@@ -368,7 +368,7 @@ COPY public.payments (id, booking_id, amount, status, payment_method, created_at
 -- Data for Name: resources; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.resources (id, name, type, description, base_price, is_active, address, location, image_url) FROM stdin;
+COPY public.resources (id, name, type, description, price_per_night, is_active, address, location, image_url) FROM stdin;
 1	Апартаменты «Metro Plus»	apartment	Уютная студия в центре города. Современный ремонт, вся необходимая техника, Wi-Fi. Рядом метро и остановки общественного транспорта.	2500.00	t	Москва, ул. Тверская, д. 15	Москва	../img/property/metro-plus.png
 2	Загородный дом «Лесная сказка»	dacha	Просторный дом в лесу. Идеально для отдыха с семьёй или друзьями. Мангальная зона, баня, парковка.	4500.00	t	Московская обл., д. Лесное	Московская область	../img/property/lesnau-skazka.webp
 3	Комната в квартире	room	Уютная комната в центре Москвы. Общая кухня и ванная. Отличный вариант для бюджетного проживания.	1200.00	t	Москва, ул. Arbat, д. 25	Москва	../img/property/komnata-arbat.jpg

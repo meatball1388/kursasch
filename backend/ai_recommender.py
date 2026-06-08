@@ -9,9 +9,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 
-MODEL_PATH = Path("model.pkl")
-ENCODERS_PATH = Path("encoders.pkl")
-DATA_PATH = Path("training_data.csv")
+MODEL_PATH = Path(__file__).parent / "model.pkl"
+ENCODERS_PATH = Path(__file__).parent / "encoders.pkl"
+DATA_PATH = Path(__file__).parent / "training_data.csv"
 
 CITIES = ["Москва", "Санкт-Петербург", "Казань", "Сочи", "Екатеринбург", "Новосибирск", "Краснодар", "Нижний Новгород", "Воронеж"]
 PROPERTY_TYPES = ["apartment", "house", "room", "villa", "dacha", "cottedzh"]
@@ -55,7 +55,9 @@ def _build_features(df: pd.DataFrame, city_enc: LabelEncoder, type_enc: LabelEnc
     return np.column_stack([city_col, type_col, price_range, rooms, guests, nights, amenity_matrix])
 
 
-def train_model(data_path: str = str(DATA_PATH)) -> dict:
+def train_model(data_path: str = None) -> dict:
+    if data_path is None:
+        data_path = str(DATA_PATH)
     df = pd.read_csv(data_path)
 
     city_enc = LabelEncoder().fit(CITIES)
@@ -196,3 +198,4 @@ def get_recommendations(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_n]
+

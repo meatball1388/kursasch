@@ -6,7 +6,7 @@ from pydantic import BaseModel
   name varchar
   type varchar // room, desk, car
   description text
-  base_price decimal
+  price_per_night decimal
   is_active boolean
   address varchar
   location varchar

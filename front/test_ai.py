@@ -6,7 +6,9 @@ test_ai.py — юнит-тесты AI-модуля (ai_recommender.py + ai_route
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Путь к бэкенду
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(project_root, 'backend'))
 
 import json
 import pickle

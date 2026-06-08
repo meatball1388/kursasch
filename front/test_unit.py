@@ -6,6 +6,9 @@ resources (CRUD), bookings, admin_api, reviews, stats, my-bookings.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Путь к бэкенду
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(project_root, 'backend'))
 
 import pytest
 import bcrypt
@@ -70,7 +73,7 @@ class TestCities:
 
     @pytest.mark.asyncio
     async def test_cities_returns_list(self, client, con):
-        con.fetch.return_value = [row(location="Москва"), row(location="Казань")]
+        con.fetch.return_value = [row(name="Москва"), row(name="Казань")]
         async with client:
             resp = await client.get("/cities")
         assert resp.status_code == 200
@@ -89,8 +92,8 @@ class TestCities:
         async with client:
             await client.get("/cities")
         query = con.fetch.call_args[0][0]
-        assert "is_active = TRUE" in query
-        assert "location" in query
+        assert "cities" in query
+        assert "ORDER BY name" in query
 
 
 # ═══════════════════════════════════════════════════════
@@ -131,7 +134,7 @@ class TestSearch:
         async with client:
             await client.post("/search", json={"min_price": 1000, "max_price": 5000})
         query = con.fetch.call_args[0][0]
-        assert "base_price" in query
+        assert "price_per_night" in query
 
     @pytest.mark.asyncio
     async def test_search_with_dates_filters_booked(self, client, con):
@@ -343,7 +346,7 @@ class TestResources:
             resp = await client.post("/resources", json={
                 "name": "Новая дача",
                 "type": "dacha",
-                "base_price": 5000,
+                "price_per_night": 5000,
                 "address": "ул. Мира, 5",
                 "location": "Казань"
             })
@@ -363,7 +366,7 @@ class TestResources:
     @pytest.mark.asyncio
     async def test_get_resource_local_image_mapping(self, client, con):
         """Внешние URL изображений заменяются на локальные пути."""
-        res = row(**{**SAMPLE_RESOURCE, "image_url": "https://unsplash.com/photo.jpg"})
+        res = row(**{**SAMPLE_RESOURCE, "id": 1, "image_url": "https://unsplash.com/photo.jpg"})
         con.fetchrow.return_value = res
         async with client:
             resp = await client.get("/resources/1")
@@ -395,7 +398,7 @@ class TestBookings:
 
     @pytest.mark.asyncio
     async def test_create_booking_conflict(self, client, con):
-        con.fetchrow.return_value = row(id=5)   # конфликт
+        con.fetchrow.return_value = row(id=5, status="PAID", user_id=99)   # конфликт
         async with client:
             resp = await client.post("/bookings", json={
                 "resource_id": 42,
