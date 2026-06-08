@@ -104,12 +104,11 @@ async def lifespan(app: FastAPI):
             print("Миграция: Добавление колонки external_id в таблицу payments...")
             await con.execute("ALTER TABLE payments ADD COLUMN external_id VARCHAR(100);")
 
-        # 2. Проверка колонок в resources (area, guests, bedrooms, amenities)
+        # 2. Проверка колонок в resources (area, guests, bedrooms)
         resource_cols = {
             "area": "INTEGER DEFAULT 0",
             "guests": "INTEGER DEFAULT 0",
-            "bedrooms": "INTEGER DEFAULT 0",
-            "amenities": "TEXT DEFAULT '[]'"
+            "bedrooms": "INTEGER DEFAULT 0"
         }
         for col, col_def in resource_cols.items():
             check_res = await con.fetchval(f"""
@@ -133,7 +132,8 @@ async def lifespan(app: FastAPI):
                     author_name VARCHAR(100),
                     rating INTEGER DEFAULT 5,
                     comment TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
                 );
             """)
 
@@ -146,14 +146,42 @@ async def lifespan(app: FastAPI):
             print("Миграция: Добавление колонки comment в таблицу bookings...")
             await con.execute("ALTER TABLE bookings ADD COLUMN comment TEXT;")
 
-        # 5. Проверка колонки passport в bookings
-        check_booking_passport = await con.fetchval("""
-            SELECT count(*) FROM information_schema.columns 
-            WHERE table_name='bookings' AND column_name='passport';
-        """)
-        if check_booking_passport == 0:
-            print("Миграция: Добавление колонки passport в таблицу bookings...")
-            await con.execute("ALTER TABLE bookings ADD COLUMN passport TEXT;")
+        # 5. Проверка новых таблиц (amenities, guest_profiles, audit_logs)
+        tables_to_check = {
+            "amenities": """CREATE TABLE amenities (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) UNIQUE NOT NULL,
+                icon VARCHAR(100)
+            )""",
+            "resource_amenities": """CREATE TABLE resource_amenities (
+                resource_id INTEGER REFERENCES resources(id) ON DELETE CASCADE,
+                amenity_id INTEGER REFERENCES amenities(id) ON DELETE CASCADE,
+                PRIMARY KEY (resource_id, amenity_id)
+            )""",
+            "guest_profiles": """CREATE TABLE guest_profiles (
+                id SERIAL PRIMARY KEY,
+                booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE UNIQUE,
+                name VARCHAR(255),
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                passport TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""",
+            "audit_logs": """CREATE TABLE audit_logs (
+                id SERIAL PRIMARY KEY,
+                action VARCHAR(255) NOT NULL,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                resource_id INTEGER REFERENCES resources(id) ON DELETE SET NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )"""
+        }
+        
+        for table, create_sql in tables_to_check.items():
+            exists = await con.fetchval(f"SELECT count(*) FROM information_schema.tables WHERE table_name='{table}'")
+            if exists == 0:
+                print(f"Миграция: Создание таблицы {table}...")
+                await con.execute(create_sql)
             
         # 7. Проверка колонок в users (phone, passport)
         user_cols = {
@@ -272,10 +300,10 @@ async def get_cities(request: Request):
     pool = request.app.state.pool
     async with pool.acquire() as con:
         rows = await con.fetch(
-            "SELECT DISTINCT location FROM resources WHERE is_active = TRUE AND location IS NOT NULL ORDER BY location"
+            "SELECT name FROM cities ORDER BY name"
         )
         print(f"DEBUG: Found {len(rows)} cities")
-        return {"cities": [row["location"] for row in rows]}
+        return {"cities": [row["name"] for row in rows]}
 
 
 # ==============================================================
@@ -299,12 +327,12 @@ async def search(request: Request):
     i = 1
 
     if data.get("location"):
-        conditions.append(f"r.location ILIKE ${i}")
+        conditions.append(f"c.name ILIKE ${i}")
         params.append(f"%{data['location']}%")
         i += 1
 
     if data.get("type"):
-        conditions.append(f"r.type = ${i}")
+        conditions.append(f"rt.name = ${i}")
         params.append(data["type"])
         i += 1
 
@@ -339,15 +367,18 @@ async def search(request: Request):
     async with pool.acquire() as con:
         rows = await con.fetch(
             f"""
-            SELECT r.id, r.name, r.type, r.description,
-                   r.address, r.location, r.base_price, r.image_url,
-                   r.area, r.guests, r.bedrooms, r.amenities,
+            SELECT r.id, r.name, rt.name as type, r.description,
+                   r.address, c.name as location, r.base_price, r.image_url,
+                   r.area, r.guests, r.bedrooms,
+                   COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{{{{}}}}') as amenities,
                    COUNT(rv.id)::int AS review_count,
                    COALESCE(ROUND(AVG(rv.rating)::numeric, 1), 0)::float AS avg_rating
             FROM resources r
             LEFT JOIN reviews rv ON rv.resource_id = r.id
+            LEFT JOIN cities c ON r.city_id = c.id
+            LEFT JOIN resource_types rt ON r.type_id = rt.id
             {where}
-            GROUP BY r.id
+            GROUP BY r.id, c.name, rt.name
             ORDER BY r.id
             LIMIT 50
             """,
@@ -599,29 +630,56 @@ async def create_resource(request: Request):
         bedrooms = data.get("bedrooms") or details.get("bedrooms") or 0
         amenities = data.get("amenities") or details.get("amenities") or []
         
-        if isinstance(amenities, list):
-            amenities_str = json.dumps(amenities, ensure_ascii=False)
-        else:
-            amenities_str = str(amenities)
-
         async with pool.acquire() as con:
+            # Получаем или создаем город
+            loc_name = data.get("location", "")
+            if loc_name:
+                city_id = await con.fetchval(
+                    "INSERT INTO cities (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+                    loc_name
+                )
+            else:
+                city_id = None
+                
+            # Получаем или создаем тип
+            type_name = data.get("type", "apartment")
+            type_id = await con.fetchval(
+                "INSERT INTO resource_types (name, display_name) VALUES ($1, $1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+                type_name
+            )
+
             result = await con.fetchrow(
-                """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms, amenities)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
+                """INSERT INTO resources (name, type, description, base_price, is_active, address, location, image_url, area, guests, bedrooms, city_id, type_id)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id""",
                 data.get("name", "Без названия"),
-                data.get("type", "apartment"),
+                type_name,
                 data.get("description", ""),
                 float(data.get("base_price", 0)),
                 data.get("is_active", True),
                 data.get("address", ""),
-                data.get("location", ""),
+                loc_name,
                 data.get("image_url", None),
                 int(area),
                 int(guests),
                 int(bedrooms),
-                amenities_str
+                city_id,
+                type_id
             )
-            return {"id": result["id"], "message": "Объект успешно добавлен"}
+            res_id = result["id"]
+            
+            # Вставка удобств
+            if amenities:
+                for am_name in amenities:
+                    am_id = await con.fetchval(
+                        "INSERT INTO amenities (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING id",
+                        am_name
+                    )
+                    await con.execute(
+                        "INSERT INTO resource_amenities (resource_id, amenity_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                        res_id, am_id
+                    )
+                    
+            return {"id": res_id, "message": "Объект успешно добавлен"}
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -660,7 +718,6 @@ async def create_booking(request: Request):
         encrypted_passport = encrypt_data(passport)
 
         async with pool.acquire() as con:
-            # Проверяем доступность... (unchanged)
             # Проверяем доступность. Конфликтуем только с оплаченными, подтвержденными 
             # или свежими (созданными < 30 мин назад) бронированиями других пользователей.
             # Бронирования со статусом CANCELLED или COMPLETED игнорируем.
@@ -684,10 +741,18 @@ async def create_booking(request: Request):
                 else:
                     return {"error": "Объект уже забронирован на эти даты", "success": False}
 
+            # Вставка в bookings (без персональных данных)
             result = await con.fetchrow(
-                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment, adults, children, name, email, phone, passport)
-                   VALUES ($1, $2, $3, $4, 'CREATED', $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
-                user_id, resource_id, start_time, end_time, price, comment, adults, children, name, email, phone, encrypted_passport
+                """INSERT INTO bookings (user_id, resource_id, start_time, end_time, status, price, comment, adults, children)
+                   VALUES ($1, $2, $3, $4, 'CREATED', $5, $6, $7, $8) RETURNING id""",
+                user_id, resource_id, start_time, end_time, price, comment, adults, children
+            )
+            
+            # Вставка в guest_profiles
+            await con.execute(
+                """INSERT INTO guest_profiles (booking_id, name, email, phone, passport)
+                   VALUES ($1, $2, $3, $4, $5)""",
+                result["id"], name, email, phone, encrypted_passport
             )
             
             # Авто-обновление профиля пользователя (сохранение "по аккаунту")
@@ -696,6 +761,13 @@ async def create_booking(request: Request):
                                    passport = COALESCE(NULLIF($2, ''), passport)
                    WHERE id = $3""",
                 phone, encrypted_passport, user_id
+            )
+            
+            # Логирование
+            await con.execute(
+                """INSERT INTO audit_logs (action, user_id, resource_id, details)
+                   VALUES ($1, $2, $3, $4)""",
+                "CREATE_BOOKING", user_id, resource_id, f"Бронирование #{result['id']} создано (гость: {name})"
             )
             
             return {"id": result["id"], "message": "Бронирование успешно создано", "success": True}
@@ -736,17 +808,24 @@ async def admin_api(request: Request):
                     )
                 elif table == "resources":
                     rows = await con.fetch(
-                        "SELECT id, name, type, base_price, location, address, is_active, area, guests, bedrooms, amenities, image_url FROM resources ORDER BY id"
+                        """SELECT r.id, r.name, rt.name as type, r.base_price, c.name as location, r.address, r.is_active, r.area, r.guests, r.bedrooms, r.image_url,
+                                  COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{}') as amenities
+                           FROM resources r 
+                           LEFT JOIN cities c ON r.city_id = c.id
+                           LEFT JOIN resource_types rt ON r.type_id = rt.id
+                           ORDER BY r.id"""
                     )
                 elif table == "bookings":
                     rows = await con.fetch(
                         """SELECT b.id, b.user_id, b.resource_id,
                                   b.start_time, b.end_time, b.status, b.price,
-                                  b.comment, b.adults, b.children, b.name, b.email, b.phone, b.passport,
+                                  b.comment, b.adults, b.children,
+                                  gp.name, gp.email, gp.phone, gp.passport,
                                   u.email as user_email,
                                   COALESCE(u.name || ' ' || u.surname, u.email) as user_name,
                                   r.name as resource_name
                            FROM bookings b
+                           LEFT JOIN guest_profiles gp ON b.id = gp.booking_id
                            LEFT JOIN users u ON b.user_id = u.id
                            LEFT JOIN resources r ON b.resource_id = r.id
                            ORDER BY b.id DESC"""
@@ -822,9 +901,13 @@ async def get_reviews(resource_id: int, request: Request):
     pool = request.app.state.pool
     async with pool.acquire() as con:
         rows = await con.fetch(
-            """SELECT id, author_name, rating, comment, created_at
-               FROM reviews WHERE resource_id = $1
-               ORDER BY created_at DESC""",
+            """SELECT r.id, 
+                      COALESCE(NULLIF(u.name || ' ' || u.surname, ' '), r.author_name) as author_name,
+                      r.rating, r.comment, r.created_at, r.user_id
+               FROM reviews r
+               LEFT JOIN users u ON r.user_id = u.id
+               WHERE r.resource_id = $1
+               ORDER BY r.created_at DESC""",
             resource_id
         )
         results = []
@@ -845,13 +928,15 @@ async def add_review(request: Request):
         author_name = data.get("author_name", "Гость")
         rating = int(data.get("rating", 5))
         comment = data.get("comment", "")
+        user_id = data.get("user_id")
+        
         if not resource_id:
             return {"error": "resource_id required"}
         async with pool.acquire() as con:
             await con.execute(
-                """INSERT INTO reviews (resource_id, author_name, rating, comment)
-                   VALUES ($1, $2, $3, $4)""",
-                resource_id, author_name, rating, comment
+                """INSERT INTO reviews (resource_id, author_name, rating, comment, user_id)
+                   VALUES ($1, $2, $3, $4, $5)""",
+                resource_id, author_name, rating, comment, int(user_id) if user_id else None
             )
         return {"message": "Отзыв добавлен", "success": True}
     except Exception as e:
@@ -892,13 +977,19 @@ async def get_resource(request: Request, resource_id: int):
     pool = request.app.state.pool
     async with pool.acquire() as con:
         row = await con.fetchrow(
-            "SELECT * FROM resources WHERE id = $1", resource_id
+            """SELECT r.*, 
+                      COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{}') as amenities
+               FROM resources r WHERE r.id = $1""", 
+            resource_id
         )
         if not row:
             raise HTTPException(status_code=404, detail="Объект не найден")
         
         d = dict(row)
         d["image_url"] = map_image_url(d.get("image_url"), d["id"])
+        # Приводим Decimal к float
+        if d.get("base_price"):
+            d["base_price"] = float(d["base_price"])
         return d
 
 
