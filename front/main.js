@@ -67,8 +67,7 @@ function updateGuestsSummary() {
 }
 
 // Переменная для API
-const backendHost = window.location.hostname || 'localhost';
-const API_URL = 'http://' + backendHost + ':8000';
+const API_URL = window.location.origin.replace(':80', '') + ':8000';
 
 $(document).ready(function () {
 
@@ -582,7 +581,8 @@ $(document).ready(function () {
 
         $.each(items, function (index, item) {
             var typeName = typeNames[item.type] || 'Недвижимость';
-            var priceFormatted = Number(item.price_per_night).toLocaleString('ru-RU');
+            var priceVal = parseFloat(item.price_per_night) || 0;
+            var priceFormatted = priceVal.toLocaleString('ru-RU');
             var name = escapeHtml(item.name || 'Без названия');
             var address = escapeHtml(item.address || item.location || 'Адрес не указан');
             var description = escapeHtml(item.description || 'Описание отсутствует');

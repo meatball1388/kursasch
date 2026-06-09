@@ -101,6 +101,15 @@ async def lifespan(app: FastAPI):
             print("Миграция: Добавление колонки external_id в таблицу payments...")
             await con.execute("ALTER TABLE payments ADD COLUMN external_id VARCHAR(100);")
 
+        # 1.5 Переименование base_price в price_per_night
+        has_base_price = await con.fetchval("""
+            SELECT count(*) FROM information_schema.columns 
+            WHERE table_name='resources' AND column_name='base_price';
+        """)
+        if has_base_price > 0:
+            print("Миграция: Переименование base_price в price_per_night...")
+            await con.execute("ALTER TABLE resources RENAME COLUMN base_price TO price_per_night;")
+
         # 2. Проверка колонок в resources (area, guests, bedrooms)
         resource_cols = {
             "area": "INTEGER DEFAULT 0",
@@ -133,6 +142,15 @@ async def lifespan(app: FastAPI):
                     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
                 );
             """)
+        else:
+            # Проверяем наличие колонки user_id если таблица уже есть
+            check_user_id = await con.fetchval("""
+                SELECT count(*) FROM information_schema.columns 
+                WHERE table_name='reviews' AND column_name='user_id';
+            """)
+            if check_user_id == 0:
+                print("Миграция: Добавление колонки user_id в таблицу reviews...")
+                await con.execute("ALTER TABLE reviews ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;")
 
         # 4. Проверка колонки comment в bookings
         check_booking_comment = await con.fetchval("""
@@ -203,6 +221,30 @@ async def lifespan(app: FastAPI):
                 print(f"Миграция: Добавление колонки {col} в таблицу resources...")
                 await con.execute(f"ALTER TABLE resources ADD COLUMN {col} {col_def};")
 
+        # 6.1 Миграция данных из location/type в city_id/type_id
+        # Проверяем, есть ли пустые city_id при наличии location
+        need_city_mig = await con.fetchval("SELECT COUNT(*) FROM resources WHERE city_id IS NULL AND location IS NOT NULL")
+        if need_city_mig > 0:
+            print("Миграция: Заполнение city_id из location...")
+            await con.execute("INSERT INTO cities (name) SELECT DISTINCT location FROM resources WHERE location IS NOT NULL ON CONFLICT DO NOTHING")
+            await con.execute("UPDATE resources r SET city_id = c.id FROM cities c WHERE r.location = c.name AND r.city_id IS NULL")
+
+        # Предзаполняем типы красивыми именами
+        await con.execute("""
+            INSERT INTO resource_types (name, display_name) VALUES 
+            ('apartment', 'Квартира'),
+            ('dacha', 'Дача'),
+            ('room', 'Комната'),
+            ('cottedzh', 'Коттедж')
+            ON CONFLICT (name) DO NOTHING
+        """)
+        
+        need_type_mig = await con.fetchval("SELECT COUNT(*) FROM resources WHERE type_id IS NULL AND type IS NOT NULL")
+        if need_type_mig > 0:
+            print("Миграция: Заполнение type_id из type...")
+            await con.execute("INSERT INTO resource_types (name, display_name) SELECT DISTINCT type, type FROM resources WHERE type IS NOT NULL ON CONFLICT (name) DO NOTHING")
+            await con.execute("UPDATE resources r SET type_id = rt.id FROM resource_types rt WHERE r.type = rt.name AND r.type_id IS NULL")
+
         # 7. Проверка колонок в users (phone, passport)
         user_cols = {
             "phone": "VARCHAR(50)",
@@ -245,14 +287,8 @@ app = FastAPI(lifespan=lifespan)
 # CORS — разрешаем запросы с фронтенда
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://127.0.0.1",
-        "http://localhost:80",
-        "http://localhost:8000",
-    ],
-    allow_origin_regex=r"http(s)?://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -414,6 +450,8 @@ async def search(request: Request):
         for row in rows:
             d = dict(row)
             d["image_url"] = map_image_url(d.get("image_url"), d["id"])
+            if d.get("price_per_night"):
+                d["price_per_night"] = float(d["price_per_night"])
             results.append(d)
         return {"results": results}
 
@@ -1131,6 +1169,26 @@ async def create_payment(request: Request):
         return_url = f"{frontend_base.rstrip('/')}/bookings.php"
         print(f"DEBUG PAYMENT: env_frontend='{env_frontend}', FINAL return_url='{return_url}'")
         
+        # Проверяем, есть ли реальные ключи ЮKassa, иначе используем заглушку
+        if not Configuration.account_id or Configuration.account_id == "YOUR_SHOP_ID":
+            print(f"DEBUG PAYMENT: Using mock payment for booking {booking_id} because YooKassa keys are missing/invalid")
+            mock_external_id = f"mock-{uuid.uuid4()}"
+            async with pool.acquire() as con:
+                # Сразу ставим SUCCESS в базе для заглушки
+                result = await con.fetchrow(
+                    """INSERT INTO payments (booking_id, amount, status, payment_method, external_id)
+                       VALUES ($1, $2, 'SUCCESS', 'Mock', $3) RETURNING id""",
+                    booking_id, amount, mock_external_id
+                )
+                # И сразу обновляем статус бронирования
+                await con.execute("UPDATE bookings SET status = 'PAID' WHERE id = $1", booking_id)
+                
+            return {
+                "id": result["id"],
+                "confirmation_url": return_url, # Сразу редирект обратно на bookings.php
+                "mock": True
+            }
+
         # Создаем платеж в ЮKassa
         idempotence_key = str(uuid.uuid4())
         payment = YooPayment.create({

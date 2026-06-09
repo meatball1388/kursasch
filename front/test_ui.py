@@ -128,7 +128,7 @@ class TestAPIBasic:
 
     def test_cities_returns_json(self, server):
         reset_con(server)
-        server.con.fetch.return_value = [row(location="Москва"), row(location="Казань")]
+        server.con.fetch.return_value = [row(name="Москва"), row(name="Казань")]
         resp = api("/cities")
         assert resp.status_code == 200
         assert "cities" in resp.json()
@@ -278,7 +278,7 @@ class TestResourcesAPI:
         resp = api("/resources", method="POST", json={
             "name": "Дача у озера",
             "type": "dacha",
-            "base_price": 8000,
+            "price_per_night": 8000,
             "address": "Подмосковье",
             "location": "Москва"
         })
@@ -314,7 +314,7 @@ class TestBookingsAPI:
 
     def test_booking_conflict(self, server):
         reset_con(server)
-        server.con.fetchrow.return_value = row(id=5)
+        server.con.fetchrow.return_value = row(id=5, status="PAID", user_id=99)
         resp = api("/bookings", method="POST", json={
             "resource_id": 42, "user_id": 1,
             "start_time": "2025-09-01",
@@ -422,9 +422,7 @@ class TestAdminAPI:
 #     (загрузка через file:// — без PHP-интерпретатора)
 # ═══════════════════════════════════════════════════════
 
-FRONT_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "front")
-)
+FRONT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestFrontendHTML:
@@ -604,7 +602,7 @@ class TestE2EFlows:
         r1 = api("/resources", method="POST", json={
             "name": "Тестовый объект",
             "type": "room",
-            "base_price": 1500,
+            "price_per_night": 1500,
             "address": "Тест, 1",
             "location": "Казань"
         })

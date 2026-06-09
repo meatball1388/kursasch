@@ -297,7 +297,7 @@ $propertyId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 <script src="main.js"></script>
 <script>
 const PID = <?= $propertyId ?>;
-const API = 'http://' + (window.location.hostname || 'localhost') + ':8000';
+const API = window.location.origin.replace(':80', '') + ':8000';
 let propertyData = null;
 
 function esc(s) { return $('<div>').text(s||'').html(); }

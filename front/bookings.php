@@ -69,7 +69,8 @@ session_start();
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="detailsModalBody"></div>
-                <div class="modal-footer border-0">
+                <div class="modal-footer border-0 justify-content-between">
+                    <button type="button" class="btn btn-outline-primary" id="btnDownloadDoc" style="display:none;"><i class="bi bi-filetype-pdf me-2"></i>Документ (детали)</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                 </div>
             </div>
@@ -286,6 +287,13 @@ session_start();
                 children: $btn.attr('data-children') || 0
             };
             
+            // Показываем кнопку скачивания только для успешных/оплаченных/подтвержденных броней
+            if (['CONFIRMED', 'PAID', 'SUCCESS'].includes(d.status)) {
+                $('#btnDownloadDoc').show().data('booking', d);
+            } else {
+                $('#btnDownloadDoc').hide();
+            }
+
             $('#detailsModalBody').html(`
                 <div class="mb-4">
                     <h6 class="fw-bold small text-muted text-uppercase mb-3">Объект и даты</h6>
@@ -325,6 +333,196 @@ session_start();
                 </div>
             `);
             new bootstrap.Modal(document.getElementById('detailsModal')).show();
+        });
+
+        // Скачивание/печать документа
+        $('#btnDownloadDoc').on('click', function() {
+            const d = $(this).data('booking');
+            if (!d) return;
+
+            const printWindow = window.open('', '_blank', 'width=800,height=900');
+            
+            const months = ["Января", "Февраля", "Марта", "Апреля", "Мая", "Июня", "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"];
+            const dateObj = new Date();
+            const todayStr = dateObj.getDate() + ' ' + months[dateObj.getMonth()] + ' ' + dateObj.getFullYear() + ' г.';
+            
+            // Расчет количества суток для вывода (примерный, на основе цены)
+            let nights = 1;
+            if (d.from && d.to) {
+                const partsFrom = d.from.split('.');
+                const partsTo = d.to.split('.');
+                if (partsFrom.length === 3 && partsTo.length === 3) {
+                    const df = new Date(partsFrom[2], partsFrom[1]-1, partsFrom[0]);
+                    const dt = new Date(partsTo[2], partsTo[1]-1, partsTo[0]);
+                    const diffTime = Math.abs(dt - df);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) nights = diffDays;
+                }
+            }
+            
+            const priceNum = Number(d.price.replace(/\s/g, ''));
+            const pricePerNight = nights > 0 ? (priceNum / nights).toLocaleString('ru-RU') : d.price;
+
+            const html = `
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <title>Подтверждение бронирования № 0559${d.id}</title>
+                <style>
+                    body { 
+                        font-family: 'Times New Roman', Times, serif; 
+                        color: #000; 
+                        line-height: 1.3; 
+                        padding: 40px; 
+                        max-width: 800px; 
+                        margin: 0 auto; 
+                        font-size: 14px;
+                    }
+                    .company-info {
+                        font-weight: bold;
+                        font-style: italic;
+                        margin-bottom: 20px;
+                        font-size: 13px;
+                    }
+                    .company-info p { margin: 2px 0; }
+                    .header-row {
+                        display: flex;
+                        justify-content: space-between;
+                        font-weight: bold;
+                        margin-bottom: 30px;
+                    }
+                    .title {
+                        text-align: center;
+                        font-size: 16px;
+                        font-weight: bold;
+                        margin: 20px 0;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 30px;
+                        border: 2px solid #000;
+                    }
+                    td {
+                        border: 1px solid #000;
+                        padding: 5px 8px;
+                        vertical-align: middle;
+                    }
+                    .col-label {
+                        font-weight: bold;
+                        width: 35%;
+                    }
+                    .totals-row td {
+                        font-weight: bold;
+                    }
+                    .totals-value {
+                        text-align: center;
+                    }
+                    .payment-info {
+                        font-weight: bold;
+                        margin-bottom: 30px;
+                    }
+                    .rules {
+                        font-style: italic;
+                        font-size: 13px;
+                        margin-bottom: 40px;
+                        text-align: justify;
+                    }
+                    .rules p { margin: 5px 0; }
+                    .footer-signature {
+                        font-weight: bold;
+                    }
+                    .footer-signature p { margin: 2px 0; }
+                    @media print {
+                        body { padding: 0; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="company-info">
+                    <p>ООО "BRONIC Отель"</p>
+                    <p>ОГРН: 1093443001442 ИНН/КПП 3443090954/344301001</p>
+                    <p>Сч. № 40702810000000002101 в ОАО "НОКССБАНК" г. Москва</p>
+                    <p>к/сч. 30101810000000000831 БИК 041806831</p>
+                    <p>г.Москва, ул. Тверская, 1</p>
+                    <p>Тел: (495) 720-02-32, 795-70-53, (812) 309-34-24</p>
+                    <p>site@bronic.ru</p>
+                </div>
+
+                <div class="header-row">
+                    <div>г.Москва</div>
+                    <div>${todayStr}</div>
+                </div>
+
+                <div class="title">
+                    Подтверждение бронирования № 0559${d.id}
+                </div>
+
+                <table>
+                    <tr>
+                        <td class="col-label">Место размещения</td>
+                        <td>${d.name}</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Адрес</td>
+                        <td>${d.addr}</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Категория номера</td>
+                        <td>Стандартный</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Период проживания</td>
+                        <td>${d.from} - ${d.to} г.</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Заезд / Выезд</td>
+                        <td>14.00 / 12.00</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Ф.И.О. Гостей</td>
+                        <td>${'Взрослых: ' + d.adults + ', Детей: ' + d.children}</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">В стоимость входит</td>
+                        <td>проживание</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Доп. Услуги (не<br>входящие в стоимость)</td>
+                        <td>${d.comment || ''}</td>
+                    </tr>
+                    <tr>
+                        <td class="col-label">Расчет стоимости</td>
+                        <td>(${pricePerNight} руб. * ${nights} суток ) = ${d.price} руб.</td>
+                    </tr>
+                    <tr class="totals-row">
+                        <td class="col-label">Итого:</td>
+                        <td class="totals-value">${d.price}.00 руб.</td>
+                    </tr>
+                </table>
+
+                <div class="payment-info">
+                    Оплата: По безналичному расчету (Оплачено)
+                </div>
+
+                <div class="rules">
+                    <p><b>Расчетный час в гостинице время заезда / выезда - 14.00/12.00</b></p>
+                    <p>Аннуляция бронирования осуществляется не позднее чем за 2 рабочих дня до заявленной даты заезда и принимается только в письменном виде на фирменном бланке бронирующей организации.</p>
+                    <p>При несвоевременном уведомлении ООО "BRONIC Отель" об аннуляции или опоздании гостей будет удержана стоимость простоя номера (номеров) за каждый день просрочки.</p>
+                </div>
+
+                <div class="footer-signature">
+                    <p>С уважением менеджер</p>
+                    <p>ООО "BRONIC Отель"</p>
+                </div>
+            </body>
+            </html>
+            `;
+            
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
         });
 
         loadBookings();
