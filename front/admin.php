@@ -395,7 +395,7 @@ $(document).on('click', '.delete-btn', function(){
   const id=$(this).data('id');
   $.ajax({url:API+'/admin_api', method:'POST', contentType:'application/json',
     data:JSON.stringify({action:'delete', table:currentTable, id}),
-    success(r){ if(r.success){loadTable(currentTable);loadStats();}else alert(r.error); }
+    success(r){ if(r.success){loadTable(currentTable);loadStats();}else window.showToast(r.error, 'danger'); }
   });
 });
 
@@ -582,11 +582,11 @@ $('#saveEditBtn').on('click', function(){
           bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
           loadTable(currentTable);
           loadStats();
-        } else alert(r.error);
+        } else window.showToast(r.error, 'danger');
       },
       error() {
         btn.prop('disabled', false).text(originalText);
-        alert('Ошибка при сохранении');
+        window.showToast('Ошибка при сохранении', 'danger');
       }
     });
   }
@@ -610,7 +610,7 @@ $('#saveEditBtn').on('click', function(){
           performUpdate(res.url);
         },
         error() {
-          alert('Ошибка загрузки фото. Изменения не сохранены.');
+          window.showToast('Ошибка загрузки фото. Изменения не сохранены.', 'danger');
           btn.prop('disabled', false).text(originalText);
         }
       });
@@ -678,7 +678,7 @@ $('#addForm').on('submit', function(e){
         performAdd(res.url);
       },
       error() {
-        alert('Ошибка загрузки фото. Будет использована стандартная картинка или URL.');
+        window.showToast('Ошибка загрузки фото. Будет использована стандартная картинка или URL.', 'danger');
         performAdd(null);
       }
     });

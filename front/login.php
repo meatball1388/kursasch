@@ -122,7 +122,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             }
                         });
                     } else {
-                        alert(response.message || 'Ошибка входа');
+                        window.showToast(response.message || 'Ошибка входа', 'danger');
                         $btn.prop('disabled', false).html(originalText);
                     }
                 },
@@ -132,7 +132,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         var resp = xhr.responseJSON;
                         errorMsg = resp ? (resp.message || resp.error || errorMsg) : errorMsg;
                     } catch(e) {}
-                    alert(errorMsg);
+                    window.showToast(errorMsg, 'danger');
                     $btn.prop('disabled', false).html(originalText);
                 }
             });

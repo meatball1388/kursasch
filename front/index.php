@@ -261,12 +261,12 @@ if (session_status() === PHP_SESSION_NONE) {
                         setTimeout(function() { btn.hide(); }, 2000);
                         // Показываем метрики
                         if (res.metrics) {
-                            alert('Модель обучена!\n\nТочность: ' + (res.metrics.accuracy * 100).toFixed(1) + '%\nПолнота: ' + (res.metrics.recall * 100).toFixed(1) + '%');
+                            window.showToast('Модель обучена!\n\nТочность: ' + (res.metrics.accuracy * 100).toFixed(1) + '%\nПолнота: ' + (res.metrics.recall * 100).toFixed(1) + '%', 'success');
                         }
                     },
                     error: function() {
                         btn.prop('disabled', false).html('<i class="bi bi-gear me-1"></i>Обучить модель');
-                        alert('Ошибка обучения модели');
+                        window.showToast('Ошибка обучения модели', 'danger');
                     }
                 });
             });

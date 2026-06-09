@@ -285,13 +285,12 @@ if (session_status() === PHP_SESSION_NONE) {
                 const passwordConfirm = $('#registerPasswordConfirm').val();
 
                 if (password !== passwordConfirm) {
-                    alert('Пароли не совпадают!');
-                    return false;
+                    window.showToast('Пароли не совпадают!', 'danger');
+                    return;
                 }
-
                 if (password.length < 6) {
-                    alert('Пароль должен быть не менее 6 символов');
-                    return false;
+                    window.showToast('Пароль должен быть не менее 6 символов', 'danger');
+                    return;
                 }
 
                 const $btn = $(this).find('button[type="submit"]');
@@ -341,13 +340,13 @@ if (session_status() === PHP_SESSION_NONE) {
                                             }
                                         });
                                     } else {
-                                        alert('Регистрация прошла успешно! Войдите в аккаунт.');
-                                        window.location.href = 'login.php';
+                                        window.showToast('Регистрация прошла успешно! Войдите в аккаунт.', 'success');
+                                        setTimeout(() => window.location.href = 'login.php', 2000);
                                     }
                                 },
                                 error: function() {
-                                    alert('Регистрация прошла успешно! Войдите в аккаунт.');
-                                    window.location.href = 'login.php';
+                                    window.showToast('Регистрация прошла успешно! Войдите в аккаунт.', 'success');
+                                    setTimeout(() => window.location.href = 'login.php', 2000);
                                 }
                             });
                         } else if (response.message === 'почта занята') {
@@ -355,7 +354,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             $('#emailError').text('Этот Email уже зарегистрирован').show();
                             $btn.prop('disabled', false).html(originalText);
                         } else {
-                            alert(response.message || 'Ошибка регистрации');
+                            window.showToast(response.message || 'Ошибка регистрации', 'danger');
                             $btn.prop('disabled', false).html(originalText);
                         }
                     },
@@ -370,7 +369,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             $('#registerEmail').addClass('is-invalid');
                             $('#emailError').text(errorMsg).show();
                         } else {
-                            alert(errorMsg);
+                            window.showToast(errorMsg, 'danger');
                         }
                         $btn.prop('disabled', false).html(originalText);
                     }

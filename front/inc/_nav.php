@@ -115,7 +115,7 @@ window.phpSessionUser = <?php echo isset($_SESSION['user']) ? json_encode($_SESS
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Отправка...';
                     
                     setTimeout(() => {
-                        alert('Ваше обращение №' + Math.floor(Math.random() * 10000) + ' принято! Мы свяжемся с вами в ближайшее время.');
+                        window.showToast('Ваше обращение №' + Math.floor(Math.random() * 10000) + ' принято! Мы свяжемся с вами в ближайшее время.', 'success');
                         this.reset();
                         btn.disabled = false;
                         btn.innerHTML = originalHtml;

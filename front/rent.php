@@ -272,7 +272,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         type: propertyType,
                         description: description,
                         price_per_night: price,
-                        is_active: true,
+                        is_active: false,
                         address: address,
                         location: location,
                         image_url: imageUrl,
@@ -282,14 +282,21 @@ if (session_status() === PHP_SESSION_NONE) {
                         amenities: amenities
                     };
 
+                    const API = window.API_URL || (window.location.origin.replace(':80', '') + ':8000');
+
                     $.ajax({
-                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/resources',
+                        url: API + '/resources',
                         method: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify(apiData),
                         success: function(response) {
-                            alert('Объект успешно добавлен!');
-                            window.location.href = 'index.php';
+                            if (response.error) {
+                                window.showToast(response.error, 'danger');
+                                $btn.prop('disabled', false).html(originalText);
+                            } else {
+                                window.showToast('Объект успешно отправлен на модерацию!', 'success');
+                                setTimeout(() => window.location.href = 'index.php', 2500);
+                            }
                         },
                         error: function(xhr) {
                             var errorMsg = 'Ошибка при добавлении объекта';
@@ -297,7 +304,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 var res = xhr.responseJSON;
                                 if (res && res.error) errorMsg = res.error;
                             } catch (e) {}
-                            alert(errorMsg);
+                            window.showToast(errorMsg, 'danger');
                             $btn.prop('disabled', false).html(originalText);
                         }
                     });
@@ -308,9 +315,11 @@ if (session_status() === PHP_SESSION_NONE) {
                 if (fileInput.files && fileInput.files.length > 0) {
                     var formData = new FormData();
                     formData.append('file', fileInput.files[0]);
+                    
+                    const API = window.API_URL || (window.location.origin.replace(':80', '') + ':8000');
 
                     $.ajax({
-                        url: 'http://' + (window.location.hostname || 'localhost') + ':8000/upload',
+                        url: API + '/upload',
                         method: 'POST',
                         data: formData,
                         processData: false,
@@ -319,7 +328,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             saveResource(res.url);
                         },
                         error: function() {
-                            alert('Ошибка при загрузке изображения. Будет использовано стандартное.');
+                            window.showToast('Ошибка при загрузке изображения. Будет использовано стандартное.', 'warning');
                             saveResource(null);
                         }
                     });

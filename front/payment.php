@@ -108,17 +108,17 @@ $(function() {
                 data: JSON.stringify({ payment_id: paymentId }),
                 success: function(res) {
                     if (res.success) {
-                        alert('Оплата прошла успешно!');
+                        window.showToast('Оплата прошла успешно!', 'success');
                         window.location.href = 'bookings.php';
                     } else {
-                        alert('Ошибка оплаты: ' + (res.error || 'Неизвестная ошибка'));
+                        window.showToast('Ошибка оплаты: ' + (res.error || 'Неизвестная ошибка'), 'danger');
                         $('#btnText').removeClass('d-none');
                         $('#btnLoader').addClass('d-none');
                         $btn.prop('disabled', false);
                     }
                 },
                 error: function() {
-                    alert('Ошибка сервера при подтверждении платежа');
+                    window.showToast('Ошибка сервера при подтверждении платежа', 'danger');
                     $('#btnText').removeClass('d-none');
                     $('#btnLoader').addClass('d-none');
                     $btn.prop('disabled', false);

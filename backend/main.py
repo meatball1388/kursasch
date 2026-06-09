@@ -376,7 +376,7 @@ async def get_cities(request: Request):
 
 @app.post("/search")
 async def search(request: Request):
-    print("DEBUG: Received request for /search")
+    print(f"DEBUG: Search request. DB_URL from env: {os.getenv('DB_URL')}")
     pool = request.app.state.pool
 
     try:
@@ -384,7 +384,7 @@ async def search(request: Request):
     except Exception:
         data = {}
 
-    conditions = ["r.is_active = TRUE"]
+    conditions = ["1=1"] # Показываем все, включая те, что на модерации
     params = []
     i = 1
 
@@ -431,7 +431,7 @@ async def search(request: Request):
             f"""
             SELECT r.id, r.name, rt.name as type, r.description,
                    r.address, c.name as location, r.price_per_night, r.image_url,
-                   r.area, r.guests, r.bedrooms,
+                   r.area, r.guests, r.bedrooms, r.is_active,
                    COALESCE((SELECT array_agg(a.name) FROM resource_amenities ra JOIN amenities a ON ra.amenity_id = a.id WHERE ra.resource_id = r.id), '{{}}') as amenities,
                    COUNT(rv.id)::int AS review_count,
                    COALESCE(ROUND(AVG(rv.rating)::numeric, 1), 0)::float AS avg_rating
@@ -713,8 +713,8 @@ async def create_resource(request: Request):
             )
 
             result = await con.fetchrow(
-               """INSERT INTO resources (name, description, price_per_night, is_active, address, image_url, area, guests, bedrooms, city_id, type_id)
-                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id""",
+               """INSERT INTO resources (name, description, price_per_night, is_active, address, image_url, area, guests, bedrooms, city_id, type_id, type, location)
+                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id""",
                data.get("name", "Без названия"),
                data.get("description", ""),
                float(data.get("price_per_night", 0)),
@@ -725,7 +725,9 @@ async def create_resource(request: Request):
                int(guests),
                int(bedrooms),
                city_id,
-               type_id
+               type_id,
+               type_name,
+               loc_name
             )
             res_id = result["id"]
             

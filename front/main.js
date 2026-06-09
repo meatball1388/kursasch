@@ -592,6 +592,12 @@ $(document).ready(function () {
             var heartClass = isFav ? 'bi-heart-fill text-danger' : 'bi-heart';
             var reviewCount = item.review_count || 0;
             var avgRating = parseFloat(item.avg_rating || 0);
+            
+            var isActive = (item.is_active === true || item.is_active === 't' || item.is_active === 1);
+            var bookBtnHtml = isActive 
+                ? `<button class="btn btn-danger btn-book" data-id="${item.id}" data-name="${name}" data-price="${item.price_per_night}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>`
+                : `<button class="btn btn-secondary" disabled title="Объект на модерации"><i class="bi bi-clock-history me-2"></i>На модерации</button>`;
+
             var ratingHtml = avgRating > 0 
                 ? `<div class="fw-bold"><i class="bi bi-star-fill text-warning me-1"></i>${avgRating.toFixed(1)}</div>` 
                 : `<div class="text-muted small">Нет оценок</div>`;
@@ -643,11 +649,12 @@ $(document).ready(function () {
                                         <span class="badge bg-light text-dark"><i class="bi bi-door-open me-1"></i>${item.bedrooms || 1} сп.</span>
                                         <span class="badge bg-light text-dark"><i class="bi bi-aspect-ratio me-1"></i>${item.area || 45} м²</span>
                                     </div>
+
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="fw-bold fs-4 text-danger">${priceFormatted} ₽ <span class="text-muted fs-6 fw-normal">/ сутки</span></div>
                                         <div class="d-flex gap-2">
                                             <button class="btn btn-outline-primary btn-show-phone" data-phone-visible="false"><i class="bi bi-telephone me-2"></i>Показать телефон</button>
-                                            <button class="btn btn-danger btn-book" data-id="${item.id}" data-name="${name}" data-price="${item.price_per_night}" data-location="${address}">Забронировать <i class="bi bi-arrow-right ms-1"></i></button>
+                                            ${bookBtnHtml}
                                         </div>
                                     </div>
                                 </div>

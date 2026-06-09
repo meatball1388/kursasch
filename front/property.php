@@ -366,6 +366,11 @@ function renderPage(item, reviews) {
     $('#amenitiesBlock').html(amenHtml);
 
     // Booking card
+    if (item.is_active === false || item.is_active === 'f' || item.is_active === 0) {
+        $('#bookBtn').prop('disabled', true).addClass('btn-secondary').removeClass('btn-book-main').html('<i class="bi bi-clock-history me-2"></i>На модерации');
+        $('#priceBreakdown').html('<div class="alert alert-info py-2 mb-0" style="font-size:0.9rem;"><i class="bi bi-info-circle me-2"></i>Этот объект находится на проверке и временно недоступен для бронирования.</div>').removeClass('d-none');
+    }
+
     $('#bookingPrice').html(`${priceF} ₽ <span style="font-size:.95rem;font-weight:400;opacity:.75;">/ ночь</span>`);
     $('#bookingRating').html(avgR>0?`${stars(Math.round(avgR))} <span class="text-white-50 ms-1">${avgR.toFixed(1)}</span>`:'');
     $('#bookingReviewsCount').text(reviewCount>0?`${reviewCount} отзывов`:'');
