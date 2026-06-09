@@ -120,6 +120,9 @@ if (session_status() === PHP_SESSION_NONE) {
                 <div class="card border-0 shadow-sm h-100">
                     <div class="position-relative">
                         <img src="${img}" class="card-img-top" style="height:200px;object-fit:cover;" alt="${item.name}" onerror="${onerr}">
+                        <div class="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded bg-dark text-white fw-bold" style="opacity: 0.85; font-size: 0.85rem;">
+                            ${price} ₽ / ночь
+                        </div>
                         <button class="btn btn-light rounded-circle position-absolute top-0 end-0 m-2 text-danger btn-remove-fav" data-id="${item.id}" title="Удалить из избранного">
                             <i class="bi bi-heart-fill"></i>
                         </button>

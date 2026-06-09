@@ -314,7 +314,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         if (response.message === 'ok') {
                             // Автоматически входим после регистрации
                             $.ajax({
-                                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/login',
+                                url: 'set_session.php',
                                 method: 'POST',
                                 contentType: 'application/json',
                                 data: JSON.stringify({
@@ -322,24 +322,8 @@ if (session_status() === PHP_SESSION_NONE) {
                                     password: data.password
                                 }),
                                 success: function(loginResp) {
-                                    if (loginResp.message === 'вход успешен') {
-                                        $.ajax({
-                                            url: 'set_session.php',
-                                            method: 'POST',
-                                            contentType: 'application/json',
-                                            data: JSON.stringify({
-                                                id: loginResp.id,
-                                                email: loginResp.email,
-                                                name: loginResp.name,
-                                                surname: loginResp.surname,
-                                                role: loginResp.role,
-                                                phone: loginResp.phone,
-                                                passport: loginResp.passport
-                                            }),
-                                            success: function() {
-                                                window.location.href = 'index.php';
-                                            }
-                                        });
+                                    if (loginResp.success) {
+                                        window.location.href = 'index.php';
                                     } else {
                                         alert('Регистрация прошла успешно! Войдите в аккаунт.');
                                         window.location.href = 'login.php';

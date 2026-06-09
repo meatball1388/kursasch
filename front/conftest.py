@@ -53,6 +53,17 @@ class FakeCon:
     async def __aexit__(self, *_):
         pass
 
+    def transaction(self, **kwargs):
+        return FakeTransaction()
+
+
+class FakeTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        pass
+
 
 class FakePool:
     """Имитирует asyncpg.Pool."""

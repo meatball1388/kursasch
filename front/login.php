@@ -31,13 +31,13 @@ if (session_status() === PHP_SESSION_NONE) {
                         <form id="loginForm">
                             <div class="mb-3">
                                 <label for="loginEmail" class="form-label">Почта</label>
-                                <input type="email" value="a@123" class="form-control form-control-lg" id="loginEmail" name="email" placeholder="example@mail.ru" required>
+                                <input type="email" class="form-control form-control-lg" id="loginEmail" name="email" placeholder="example@mail.ru" required>
                             </div>
 
                             <div class="mb-3">
                                 <label for="loginPassword" class="form-label">Пароль</label>
                                 <div class="position-relative">
-                                    <input type="password" value="123123" class="form-control form-control-lg" id="loginPassword" name="password" placeholder="••••••••" required>
+                                    <input type="password" class="form-control form-control-lg" id="loginPassword" name="password" placeholder="••••••••" required>
                                     <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y p-0" onclick="togglePassword()" style="text-decoration: none;">
                                         <i class="bi bi-eye" id="togglePasswordIcon"></i>
                                     </button>
@@ -90,7 +90,7 @@ if (session_status() === PHP_SESSION_NONE) {
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Вход...');
             
             $.ajax({
-                url: 'http://' + (window.location.hostname || 'localhost') + ':8000/login',
+                url: 'set_session.php',
                 method: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -99,28 +99,8 @@ if (session_status() === PHP_SESSION_NONE) {
                 }),
                 dataType: 'json',
                 success: function(response) {
-                    console.log(response);
-                    // return false;
-                    if (response.success === 'true') {
-                        // Сохраняем сессию через PHP
-                        $.ajax({
-                            url: 'set_session.php',
-                            method: 'POST',
-                            contentType: 'application/json',
-                            data: JSON.stringify({
-                                id: response.id,
-                                email: response.email,
-                                name: response.name,
-                                surname: response.surname,
-                                role: response.role,
-                                phone: response.phone,
-                                passport: response.passport
-                            }),
-                            success: function() {
-                                console.log('session');
-                                window.location.href = 'index.php';
-                            }
-                        });
+                    if (response.success === true) {
+                        window.location.href = 'index.php';
                     } else {
                         alert(response.message || 'Ошибка входа');
                         $btn.prop('disabled', false).html(originalText);

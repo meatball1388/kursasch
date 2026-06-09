@@ -619,6 +619,9 @@ $(document).ready(function () {
                         <div class="row g-0">
                             <div class="col-md-4 position-relative">
                                 <img src="${imgUrl}" class="img-fluid rounded-start h-100 w-100 object-fit-cover" alt="${name}" style="min-height: 200px;" onerror="this.src='../img/property/metro-plus.png'">
+                                <div class="position-absolute bottom-0 start-0 m-3 px-3 py-1 rounded-pill" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); color: white; font-weight: bold; font-size: 0.95rem;">
+                                    ${priceFormatted} ₽ <span class="fw-normal opacity-75 small">/ сутки</span>
+                                </div>
                                 <button class="btn btn-favorite position-absolute top-0 end-0 m-3 border-0" title="${isFav ? 'В избранном' : 'Добавить в избранное'}" data-item='${itemJson}' data-item-id="${item.id}">
                                     <i class="bi ${heartClass}"></i>
                                 </button>

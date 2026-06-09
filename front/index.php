@@ -339,6 +339,9 @@ if (session_status() === PHP_SESSION_NONE) {
                                                     <img src="${imgUrl}" class="card-img-top" alt="${name}" 
                                                          style="height:180px; object-fit:cover; border-radius:14px 14px 0 0;"
                                                          onerror="this.src='../img/property/metro-plus.png'">
+                                                    <div class="position-absolute bottom-0 start-0 m-2 px-2 py-1 rounded bg-dark text-white fw-bold" style="opacity: 0.85; font-size: 0.85rem;">
+                                                        ${price} ₽ / ночь
+                                                    </div>
                                                     <span class="badge bg-${scoreColor} position-absolute top-0 end-0 m-2" style="font-size:0.85rem; backdrop-filter:blur(4px); background:rgba(25,135,84,0.85) !important;">
                                                         <i class="bi bi-cpu me-1"></i>${scorePct}% совпадение
                                                     </span>

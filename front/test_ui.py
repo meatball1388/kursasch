@@ -314,7 +314,7 @@ class TestBookingsAPI:
 
     def test_booking_conflict(self, server):
         reset_con(server)
-        server.con.fetchrow.return_value = row(id=5)
+        server.con.fetchrow.return_value = row(id=5, status="PAID", user_id=99)
         resp = api("/bookings", method="POST", json={
             "resource_id": 42, "user_id": 1,
             "start_time": "2025-09-01",

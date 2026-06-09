@@ -12,6 +12,12 @@ import json
 import shutil
 from yookassa import Configuration, Payment as YooPayment
 
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 try:
     from cryptography.fernet import Fernet
     HAS_CRYPTO = True
@@ -92,6 +98,22 @@ async def lifespan(app: FastAPI):
     
     # Автоматическая миграция: проверка наличия колонок
     async with app.state.pool.acquire() as con:
+        # 0. Проверка таблицы payments (создаем если нет)
+        check_payments = await con.fetchval("SELECT count(*) FROM information_schema.tables WHERE table_name='payments'")
+        if check_payments == 0:
+            print("Миграция: Создание таблицы payments...")
+            await con.execute("""
+                CREATE TABLE payments (
+                    id SERIAL PRIMARY KEY,
+                    booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
+                    amount NUMERIC(10,2) NOT NULL,
+                    status VARCHAR(50) DEFAULT 'PENDING',
+                    payment_method VARCHAR(50),
+                    external_id VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
         # 1. Проверка external_id в payments
         check_pay = await con.fetchval("""
             SELECT count(*) FROM information_schema.columns 
@@ -134,14 +156,21 @@ async def lifespan(app: FastAPI):
                 );
             """)
 
-        # 4. Проверка колонки comment в bookings
-        check_booking_comment = await con.fetchval("""
-            SELECT count(*) FROM information_schema.columns 
-            WHERE table_name='bookings' AND column_name='comment';
-        """)
-        if check_booking_comment == 0:
-            print("Миграция: Добавление колонки comment в таблицу bookings...")
-            await con.execute("ALTER TABLE bookings ADD COLUMN comment TEXT;")
+        # 4. Проверка колонок в bookings
+        booking_cols = {
+            "comment": "TEXT",
+            "adults": "INTEGER DEFAULT 0",
+            "children": "INTEGER DEFAULT 0",
+            "passport": "TEXT"
+        }
+        for col, col_def in booking_cols.items():
+            check_booking = await con.fetchval(f"""
+                SELECT count(*) FROM information_schema.columns 
+                WHERE table_name='bookings' AND column_name='{col}';
+            """)
+            if check_booking == 0:
+                print(f"Миграция: Добавление колонки {col} в таблицу bookings...")
+                await con.execute(f"ALTER TABLE bookings ADD COLUMN {col} {col_def};")
 
         # 5. Проверка новых таблиц (amenities, guest_profiles, audit_logs, cities, resource_types)
         tables_to_check = {
@@ -242,27 +271,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS — разрешаем запросы с фронтенда
+# CORS — разрешаем запросы с любого фронтенда для разработки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://127.0.0.1",
-        "http://localhost:80",
-        "http://localhost:8000",
-    ],
-    allow_origin_regex=r"http(s)?://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    origin = request.headers.get("origin")
-    print(f"DEBUG: Request {request.method} {request.url} from origin: {origin}")
-    response = await call_next(request)
-    return response
+    print(f"DEBUG: {request.method} {request.url}")
+    try:
+        response = await call_next(request)
+        response.headers["X-API-Version"] = "2.0.2"
+        return response
+    except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return Response(
+            content=json.dumps({"error": str(e)}),
+            status_code=500,
+            headers={"Access-Control-Allow-Origin": "*", "Content-Type": "application/json"}
+        )
 
 # Подключаем AI-роутер
 app.include_router(ai_router, prefix="/ai", tags=["AI"])
@@ -271,6 +304,19 @@ app.include_router(ai_router, prefix="/ai", tags=["AI"])
 # ==============================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==============================================================
+
+def serialize_row(row):
+    """Преобразование строки БД в JSON-сериализуемый словарь."""
+    d = dict(row)
+    for k, v in d.items():
+        if v is None:
+            continue
+        if hasattr(v, 'isoformat'):
+            d[k] = v.isoformat()
+        elif isinstance(v, (int, float)) is False and hasattr(v, '__float__'):
+            d[k] = float(v)
+    return d
+
 
 def map_image_url(image_url: str, resource_id: int) -> str:
     """Маппинг внешних URL на локальные файлы."""
@@ -412,7 +458,7 @@ async def search(request: Request):
         )
         results = []
         for row in rows:
-            d = dict(row)
+            d = serialize_row(row)
             d["image_url"] = map_image_url(d.get("image_url"), d["id"])
             results.append(d)
         return {"results": results}
@@ -569,11 +615,8 @@ async def get_favorites(user_id: int, request: Request):
         )
         results = []
         for row in rows:
-            d = dict(row)
+            d = serialize_row(row)
             d["image_url"] = map_image_url(d.get("image_url"), d["id"])
-            # Приводим Decimal к float для JSON
-            if d.get("price_per_night"):
-                d["price_per_night"] = float(d["price_per_night"])
             results.append(d)
         return {"results": results}
 
@@ -742,21 +785,25 @@ async def create_booking(request: Request):
         encrypted_passport = encrypt_data(passport)
 
         async with pool.acquire() as con:
-            # Проверяем доступность. Конфликтуем только с оплаченными, подтвержденными 
-            # или свежими (созданными < 30 мин назад) бронированиями других пользователей.
-            # Бронирования со статусом CANCELLED или COMPLETED игнорируем.
-            conflict = await con.fetchrow(
-                """SELECT id, status, user_id FROM bookings
-                   WHERE resource_id = $1 
-                   AND status NOT IN ('CANCELLED', 'COMPLETED')
-                   AND (
-                       status != 'CREATED' 
-                       OR created_at > NOW() - INTERVAL '30 minutes'
-                   )
-                   AND NOT (end_time <= $2 OR start_time >= $3)
-                   LIMIT 1""",
-                resource_id, start_time, end_time
-            )
+            async with con.transaction():
+                # Блокировка на уровне ресурса для предотвращения race condition
+                await con.execute("SELECT pg_advisory_xact_lock($1)", resource_id)
+
+                # Проверяем доступность. Конфликтуем только с оплаченными, подтвержденными 
+                # или свежими (созданными < 30 мин назад) бронированиями других пользователей.
+                # Бронирования со статусом CANCELLED или COMPLETED игнорируем.
+                conflict = await con.fetchrow(
+                    """SELECT id, status, user_id FROM bookings
+                       WHERE resource_id = $1 
+                       AND status NOT IN ('CANCELLED', 'COMPLETED')
+                       AND (
+                           status != 'CREATED' 
+                           OR created_at > NOW() - INTERVAL '30 minutes'
+                       )
+                       AND NOT (end_time <= $2 OR start_time >= $3)
+                       LIMIT 1""",
+                    resource_id, start_time, end_time
+                )
             
             if conflict:
                 # Если конфликт с собственным CREATED бронированием — разрешаем "перезаписать" (просто создаем новое)
@@ -859,14 +906,10 @@ async def admin_api(request: Request):
 
                 results = []
                 for row in rows:
-                    d = dict(row)
+                    d = serialize_row(row)
                     # Расшифровка паспорта если есть
                     if table == "bookings" and d.get("passport"):
                         d["passport"] = decrypt_data(d["passport"])
-                    
-                    for k, v in d.items():
-                        if hasattr(v, 'isoformat'):
-                            d[k] = v.isoformat()
                     results.append(d)
                 return {"results": results}
 
@@ -1042,55 +1085,71 @@ async def get_resource(request: Request, resource_id: int):
 
 @app.get("/my-bookings")
 async def my_bookings(request: Request, user_id: int):
+    logger.info(f"DEBUG: Entering /my-bookings for user_id={user_id}")
     pool = request.app.state.pool
     async with pool.acquire() as con:
-        # Сначала пробуем обновить статусы для всех PENDING платежей этого пользователя
-        pending_payments = await con.fetch(
-            """SELECT p.id, p.external_id, b.id as booking_id 
-               FROM payments p 
-               JOIN bookings b ON p.booking_id = b.id 
-               WHERE b.user_id = $1 AND p.status = 'PENDING'""",
-            user_id
-        )
-        
-        for pay in pending_payments:
-            try:
-                print(f"DEBUG: Checking YooKassa status for payment {pay['id']} (ext_id: {pay['external_id']})")
-                payment_info = YooPayment.find_one(pay["external_id"])
-                print(f"DEBUG: YooKassa status for {pay['id']} is {payment_info.status}")
-                if payment_info.status in ["succeeded", "waiting_for_capture"]:
-                    print(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID (status: {payment_info.status})")
-                    await con.execute("UPDATE payments SET status = 'SUCCESS' WHERE id = $1", pay["id"])
-                    await con.execute("UPDATE bookings SET status = 'PAID' WHERE id = $1", pay["booking_id"])
-            except Exception as e:
-                print(f"DEBUG: Error checking payment {pay['id']}: {str(e)}")
-                pass # Игнорируем ошибки связи с ЮKassa
+        logger.info(f"DEBUG: /my-bookings - Checking pending payments for user {user_id}")
+        try:
+            # Сначала пробуем обновить статусы для всех PENDING платежей этого пользователя
+            pending_payments = await con.fetch(
+                """SELECT p.id, p.external_id, b.id as booking_id 
+                   FROM payments p 
+                   JOIN bookings b ON p.booking_id = b.id 
+                   WHERE b.user_id = $1 AND p.status = 'PENDING'""",
+                user_id
+            )
+            logger.info(f"DEBUG: Found {len(pending_payments)} pending payments")
+            
+            for pay in pending_payments:
+                try:
+                    logger.info(f"DEBUG: Checking YooKassa status for payment {pay['id']} (ext_id: {pay['external_id']})")
+                    if not pay["external_id"]:
+                        continue
+                    payment_info = YooPayment.find_one(pay["external_id"])
+                    logger.info(f"DEBUG: YooKassa status for {pay['id']} is {payment_info.status}")
+                    if payment_info.status in ["succeeded", "waiting_for_capture"]:
+                        logger.info(f"DEBUG: Updating payment {pay['id']} and booking {pay['booking_id']} to SUCCESS/PAID (status: {payment_info.status})")
+                        await con.execute("UPDATE payments SET status = 'SUCCESS' WHERE id = $1", pay["id"])
+                        await con.execute("UPDATE bookings SET status = 'PAID' WHERE id = $1", pay["booking_id"])
+                except Exception as e:
+                    logger.error(f"DEBUG: Error checking payment {pay['id']}: {str(e)}")
+                    pass # Игнорируем ошибки связи с ЮKassa
+        except Exception as e:
+            logger.error(f"DEBUG: Critical error in pending payments check: {e}")
+            # Не прерываем основной поток, если упала проверка ЮKassa
 
+        logger.info(f"DEBUG: /my-bookings - Fetching bookings for user {user_id}")
         # Теперь возвращаем актуальный список
         rows = await con.fetch(
             """SELECT b.id, b.status, b.start_time, b.end_time, b.price, b.created_at,
-                      b.adults, b.children, b.comment, b.passport,
-                      r.id as resource_id, r.name as resource_name, r.address, r.location, r.image_url
+                      b.adults, b.children, b.comment, 
+                      COALESCE(gp.passport, b.passport) as passport,
+                      r.id as resource_id, r.name as resource_name, r.address, c.name as location, r.image_url
                FROM bookings b
+               LEFT JOIN guest_profiles gp ON b.id = gp.booking_id
                JOIN resources r ON b.resource_id = r.id
+               LEFT JOIN cities c ON r.city_id = c.id
                WHERE b.user_id = $1
                ORDER BY b.created_at DESC LIMIT 20""",
             user_id
         )
+        logger.info(f"DEBUG: Found {len(rows)} bookings for user {user_id}")
+        
         results = []
         for row in rows:
-            d = dict(row)
-            # Расшифровка паспорта для владельца брони
-            if d.get("passport"):
-                d["passport"] = decrypt_data(d["passport"])
+            try:
+                d = serialize_row(row)
+                # Расшифровка паспорта для владельца брони
+                if d.get("passport"):
+                    d["passport"] = decrypt_data(d["passport"])
 
-            for k, v in d.items():
-                if hasattr(v, 'isoformat'):
-                    d[k] = v.isoformat()
-            
-            # Маппинг картинки
-            d["image_url"] = map_image_url(d.get("image_url"), d["resource_id"])
-            results.append(d)
+                # Маппинг картинки
+                d["image_url"] = map_image_url(d.get("image_url"), d["resource_id"])
+                results.append(d)
+            except Exception as e:
+                logger.error(f"DEBUG: Error serializing row {dict(row) if row else 'None'}: {e}")
+                
+        logger.info(f"DEBUG: Returning {len(results)} results")
         return {"bookings": results}
 
 

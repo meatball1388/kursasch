@@ -141,7 +141,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                             паспорта <span class="text-muted small">(10 цифр)</span></label>
                                             <input type="text" class="form-control" id="guestPassport" 
                                             placeholder="1234 567890" maxlength="11" minlength="11" pattern="\d{4} \d{6}"
-                                            value="<?php echo htmlspecialchars($_SESSION['user']['passport'] ?? ''); ?>"
+                                            value=""
                                             oninput="let v = this.value.replace(/[^0-9]/g, ''); if (v.length > 4) v = v.slice(0,4) + ' ' + v.slice(4,10); this.value = v;">
                                     </div>
                                 </div>
@@ -320,6 +320,17 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="main.js"></script>
     <script>
         $(document).ready(function () {
+            const sessionUserId = <?php echo $_SESSION['user']['id'] ?? 0; ?>;
+            if (sessionUserId) {
+                $.getJSON('http://' + (window.location.hostname || 'localhost') + ':8000/users/me?user_id=' + sessionUserId, function(data) {
+                    if (data && data.passport) {
+                        $('#guestPassport').val(data.passport);
+                    }
+                }).fail(function() {
+                    console.warn('Не удалось загрузить данные пользователя');
+                });
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const propertyName = decodeURIComponent(urlParams.get('name') || '');
             const propertyPrice = parseFloat(urlParams.get('price')) || 2500;
